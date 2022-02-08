@@ -1,0 +1,6 @@
+ale-py==0.7.3
+cloudpickle==2.0.0
+gym==0.21.0
+importlib-resources==5.4.0
+numpy==1.22.2
+zipp==3.7.0
