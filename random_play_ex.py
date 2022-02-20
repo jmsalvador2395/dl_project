@@ -15,6 +15,8 @@ if __name__ == '__main__':
     action_map=env.get_keys_to_action()
     experience=[]
 
+    pass
+
     while not done:
         #probably should delete this line
         action = env.action_space.sample() 
@@ -27,3 +29,5 @@ if __name__ == '__main__':
 
         #set state to s_prime
         state=s_prime
+
+
