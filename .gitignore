@@ -1,5 +1,7 @@
 # Project-specific Files
 ROMs/*
+ROMS/*
+ALL_ROMS/*
 *.pickle
 
 # Byte-compiled / optimized / DLL files
