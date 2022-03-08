@@ -6,23 +6,35 @@ from gym.utils.play import *
 import pickle
 import datetime
 
+from utilities import data_point, data_collector
 
+#globals
+point=data_point()
 data=[]
-
-"""
-used for saving the data after playing.
-action is an integer
-obs_t should be shape (210, 160, 3)
-"""
-def cb_routine(s, s_prime, a, r, done, info):
-    data.append((s, a))
-    
+start_key=ord(' ')
+in_progress=False
 
 if __name__ == '__main__':
-    play(env = gym.make('Breakout-v0'), zoom=4, callback=cb_routine)
-    time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
-    fldr='./data/'
-    if not os.path.isdir(fldr):
-        os.mkdir(fldr)
-    with open(fldr+'demonstrator_{}.pickle'.format(time), 'wb') as fh:
-        pickle.dump(data, fh)
+
+	#file parameters
+	collector=data_collector()
+	data_dir='../data/'
+	time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
+	fname=data_dir+'demonstrator_{}.pickle'.format(time)
+
+	#create gym environment and collect data
+	play(env = gym.make('Breakout-v0', obs_type='grayscale'), zoom=4, callback=collector.callback)
+
+	#create folder for data
+	if not os.path.isdir(data_dir): 
+		os.mkdir(data_dir)
+
+	#prune data  *DO NOT USE, doesn't work*
+	#collector.prune_data()
+
+	#save data to path
+	with open(fname, 'wb') as fh:
+		pickle.dump(collector.dump_data(), fh)
+
+	print('*** data written to {} ***'.format(data_dir))
+
