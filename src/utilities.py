@@ -1,5 +1,9 @@
 import numpy as np
 from ale_py._ale_py import Action
+import pickle
+import os
+import matplotlib.pyplot as plt
+import copy
 
 
 
@@ -33,20 +37,20 @@ class data_point:
 	
 	def ready(self):
 		return self.layer_count==4
-		#return len(self.buffer)==4
 	
 	
 	#adds new frame to the data point. 
 	def add_frame(self, frame):
 
 		if self.layer_count == 4:
-			self.buffer=np.vstack((self.point[1:], np.expand_dims(frame, 0)))
+			#self.point=np.vstack((self.point[1:], np.expand_dims(frame, 0)))
+			self.point[0:3]=self.point[1:4]
+			self.point[3]=frame
 		else:
 			self.point[self.layer_count]=frame
 			self.layer_count+=1
-	
 	def get(self):
-		return self.point
+		return copy.deepcopy(self.point)
 	
 	
 class data_collector:
@@ -77,7 +81,7 @@ class data_collector:
 			self.in_progress=True
 
 		self.point.add_frame(s)
-
+		
 		if self.point.ready() and self.in_progress:
 			self.data.append((self.point.get(), a))
 
@@ -88,16 +92,9 @@ class data_collector:
 		return self.data
 	
 	"""
-	#TODO
-
-	*** DO NOT USE THIS ***
-
-	maybe we'll need it if training doesn't go well.
-	as-is this function doesn't work though so don't
-	use it until fixed
-
-	***********************
 	prune if all 4 frames are the same and no action is taken
+	run with debug=True to visualize all the frames that have been pruned
+	it's pretty janky so you feel free to force quit
 	"""
 	def prune_data(self, debug=False):
 
@@ -120,7 +117,74 @@ class data_collector:
 			print('kept data in\n{}\n'.format(active_data))
 			print('*******************')
 			print('pruned elements in\n{}'.format(inactive_data))
+			for i in inactive_data:
+				visualize_block(self.data[i][0])
 
+		print('pruned {} inactive data points'.format(len(inactive_data)))
 		self.data=[self.data[i] for i in active_data]
+
+"""
+returns the data.
+X is the set of data points
+y is the labels
+"""
+def import_data(data_dir='../data/'):
+	print("----- importing data -----")
+	files=os.listdir(data_dir)
+	tuple_data=[]
+	for f in files:
+		if 'demonstrator' in f:
+			print('reading {}'.format(f))
+			new_tuple_data=pickle.load(open(data_dir+f, 'rb'))
+			tuple_data+=new_tuple_data
+	if len(tuple_data) == 0:
+		print('** no data available **')
+		return np.array([]), np.array([])
+	print("----- finished importing data -----\n")
+
+	#break up into data and labels
+	X=np.array([i for i, j in tuple_data])
+	y=np.array([j for i, j in tuple_data])
+	return X, y
+
+"""
+use this to random sample a data point from the data folder and plot its contents
+"""
+def visualize_block(data_point=None):
+	
+	if data_point is None:
+		x, y=import_data()
+		if len(x)==0:
+			print('No data to visualize')
+			return
+		N=len(x)
+		idx=np.random.randint(0, N)
+		data_point=x[idx]
+		print('picked data point {} out of {}'.format(idx, N))
+
+	#plot image
+	fig = plt.figure(figsize=(10, 7))
+	rows=2
+	columns=2
+
+	for i, frame in enumerate(data_point):
+		fig.add_subplot(rows, columns, i+1)
+		plt.imshow(frame, cmap='gray')
+		plt.axis('off')
+		plt.title('Frame {}'.format(i))
+
+	plt.show()
+
+
+"""
+use this to random sample a data point and plot its contents
+"""
+def visualize_frame(frame=None):
+	if frame is None:
+		return
+
+	#plot image
+	plt.imshow(frame, cmap='gray')
+	plt.show()
 
 
