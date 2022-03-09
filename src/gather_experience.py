@@ -30,7 +30,7 @@ if __name__ == '__main__':
 		os.mkdir(data_dir)
 
 	#prune data
-	collector.prune_data(debug=True)
+	collector.prune_data(debug=False)
 
 	#save data to path
 	with open(fname, 'wb') as fh:
