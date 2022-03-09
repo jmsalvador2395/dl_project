@@ -1,5 +1,7 @@
 # Project-specific Files
 ROMs/*
+unused/*
+project/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
