@@ -29,8 +29,8 @@ if __name__ == '__main__':
 	if not os.path.isdir(data_dir): 
 		os.mkdir(data_dir)
 
-	#prune data  *DO NOT USE, doesn't work*
-	#collector.prune_data()
+	#prune data
+	collector.prune_data(debug=False)
 
 	#save data to path
 	with open(fname, 'wb') as fh:
