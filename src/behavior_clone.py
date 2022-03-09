@@ -2,33 +2,8 @@ import os
 import pickle
 import numpy as np
 from utilities import data_point
+from utilities import import_data
 
-data_dir='../data/'
-
-
-"""
-returns the data.
-X is the set of data points
-y is the labels
-"""
-def import_data():
-	print("----- importing data -----")
-	files=os.listdir(data_dir)
-	tuple_data=[]
-	for f in files:
-		if 'demonstrator' in f:
-			print('reading {}'.format(f))
-			new_tuple_data=pickle.load(open(data_dir+f, 'rb'))
-			tuple_data+=new_tuple_data
-	if len(tuple_data) == 0:
-		print('** no data available **')
-		return np.array([]), np.array([])
-	print("----- finished importing data -----\n")
-
-	#break up into data and labels
-	X=np.array([i for i, j in tuple_data])
-	y=np.array([j for i, j in tuple_data])
-	return X, y
 
 def main():
 
