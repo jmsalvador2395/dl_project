@@ -18,6 +18,7 @@ class Demo_Classifier:
         X,y= import_data()
 
         data_set=[]
+        '''
         for i in range(len(X)):
             y1=[0]*4
             for j in range(0,4):
@@ -27,6 +28,10 @@ class Demo_Classifier:
                     y1[j] = 0
                     
             data_set.append([X[i],np.array(y1)])
+        '''
+        for i in range(len(X)):
+            data_set.append((X[i], y[i]))
+
         train_set_size = int(len(data_set) *0.8)
         test_set_size = len(data_set) - train_set_size
         train_set, test_set = data.random_split(data_set, [train_set_size, test_set_size])
@@ -67,11 +72,11 @@ class Demo_Classifier:
         with torch.no_grad():
             for x, y in loader_train:
                 x = x.to(device=self.device, dtype=self.dtype)  # move to device, e.g. GPU
-                y = y.to(device=self.device, dtype=self.dtype)
+                y = y.to(device=self.device, dtype=torch.int64)
                 scores = model(x)
-                _, preds = scores.max(1)
-                _,preds2= y.max(1)
-                num_correct += (preds == preds2).sum()
+                preds = torch.argmax(scores, dim=1)
+                #_,preds2= torch.argmax(y)
+                num_correct += (preds == y).sum()
                 num_samples += preds.size(0)
             acc = float(num_correct) / num_samples
             print('Got %d / %d correct (%.2f)' % (num_correct, num_samples, 100 * acc))
@@ -86,8 +91,9 @@ class Demo_Classifier:
             for t,(x, y) in enumerate(loader_train):
                 model.train()  
                 x = x.to(device=self.device, dtype=self.dtype)
-                y = y.to(device=self.device, dtype=self.dtype)
+                y = y.to(device=self.device, dtype=torch.int64)
                 scores = model(x)
+                preds=torch.argmax(scores, dim=1)
                 loss = torch.nn.CrossEntropyLoss()(scores, y)
 
            
