@@ -163,7 +163,8 @@ def visualize_block(data_point=None):
 		print('picked data point {} out of {}'.format(idx, N))
 
 	#plot image
-	fig = plt.figure(figsize=(10, 7))
+	#fig = plt.figure(figsize=(10, 7))
+	fig = plt.figure()
 	rows=2
 	columns=2
 
