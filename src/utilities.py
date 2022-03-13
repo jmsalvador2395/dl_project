@@ -3,6 +3,7 @@ from ale_py._ale_py import Action
 import pickle
 import os
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
 import copy
 
 
@@ -131,21 +132,17 @@ y is the labels
 def import_data(data_dir='../data/'):
 	print("----- importing data -----")
 	files=os.listdir(data_dir)
-	tuple_data=[]
+	data_set=[]
 	for f in files:
 		if 'demonstrator' in f:
 			print('reading {}'.format(f))
-			new_tuple_data=pickle.load(open(data_dir+f, 'rb'))
-			tuple_data+=new_tuple_data
-	if len(tuple_data) == 0:
+			data_set+=pickle.load(open(data_dir+f, 'rb'))
+	if len(data_set) == 0:
 		print('** no data available **')
-		return np.array([]), np.array([])
+		return []
 	print("----- finished importing data -----\n")
 
-	#break up into data and labels
-	X=np.array([i for i, j in tuple_data])
-	y=np.array([j for i, j in tuple_data])
-	return X, y
+	return data_set
 
 """
 use this to random sample a data point from the data folder and plot its contents
@@ -153,26 +150,29 @@ use this to random sample a data point from the data folder and plot its content
 def visualize_block(data_point=None):
 	
 	if data_point is None:
-		x, y=import_data()
+		data_set=import_data()
 		if len(x)==0:
 			print('No data to visualize')
 			return
 		N=len(x)
 		idx=np.random.randint(0, N)
-		data_point=x[idx]
+		data_point=x[idx][0]
 		print('picked data point {} out of {}'.format(idx, N))
-
+	
 	#plot image
-	#fig = plt.figure(figsize=(10, 7))
-	fig = plt.figure()
+	fig = plt.figure(figsize=(10,10))
 	rows=2
 	columns=2
+	plt.title('Visualization of a Data Point')
+	plt.axis('off')
 
-	for i, frame in enumerate(data_point):
-		fig.add_subplot(rows, columns, i+1)
-		plt.imshow(frame, cmap='gray')
-		plt.axis('off')
-		plt.title('Frame {}'.format(i))
+	grid = ImageGrid(fig, 111,
+					 nrows_ncols=(rows, columns),
+					 axes_pad=.1)
+	
+	for ax, im in zip(grid, data_point):
+		ax.imshow(im, cmap='gray')
+		ax.axis('off')
 
 	plt.show()
 
