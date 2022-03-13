@@ -88,7 +88,7 @@ class Demo_Classifier:
                 num_correct += (preds == y).sum()
                 num_samples += preds.size()[0]
             val_acc = num_correct / num_samples
-            print('Validation: Got %d / %d correct (%.2f)' % (num_correct, num_samples, 100 * val_acc))
+            print('Validation: Got %d / %d correct (%.2f)\n' % (num_correct, num_samples, 100 * val_acc))
 
         return trn_acc, val_acc
 
@@ -127,7 +127,7 @@ class Demo_Classifier:
                 optimizer.step()
 
                 if t % 100 == 0:
-                    print('Epoch: {0}, Iteration {0}, loss: {0:.4f}'.format(e, t, loss.item()))
+                    print('Epoch: {0}, Iteration {0}, loss: {0:.4f}'.format(e+1, t+1, loss.item()))
                     trn_acc, val_acc=self.check_accuracy(loader_train, loader_test, model)
                     training_accuracy.append(trn_acc.cpu())
                     validation_accuracy.append(val_acc.cpu())
