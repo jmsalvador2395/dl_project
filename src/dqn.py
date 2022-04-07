@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
 from PIL import Image
-import utilities
+#import utilities
+from utilities import data_point
+import copy
 
 
 import torch
@@ -16,6 +18,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
 
+model_path='../models/'
 
 Transition=namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 
@@ -25,6 +28,7 @@ if is_python:
 plt.ion()
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+torch.set_default_dtype(torch.float32)
 
 class replay_memory(object):
 	def __init__(self, capacity):
@@ -58,7 +62,7 @@ class dqn(nn.Module):
 
 		fc = nn.Linear(32*6*5, 4)
 
-		model = nn.Sequential(
+		self.model = nn.Sequential(
 			layer1,
 			layer2,
 			nn.Flatten(),
@@ -69,6 +73,10 @@ class dqn(nn.Module):
 		x = x.to(device)
 		return self.model(x)
 
+	def train(self):
+		print('train here')
+
+	'''
 	def train(self, batch_size, gamma, policy_net, optimizer):
 		if len(self.memory) < batch_size:
 			return
@@ -99,66 +107,86 @@ class dqn(nn.Module):
 		for param in self.parameters():
 			param.grad.gdata.clamp_(-1, 1)
 		optimizer.step()
+		'''
 
 	def select_action(self, state, eps=0):
 		sample=random.random()
 
 if __name__ == '__main__':
 	episodes=300
-	batch_size=4000
+	batch_size=400
 	gamma=.999
+	epsilon=.9
 	epsilon_start=.9
 	epsilon_end=.05
 	epsilon_decay=200
 	target_update=10
+	dtype=torch.float32
 
-	done=False
+	memory_size=10000
+
 	env = gym.make('Breakout-v0', obs_type='grayscale', render_mode='human')
 
+	'''
 	print(env.get_keys_to_action())
 	print(env.get_action_meanings())
+	'''
 
 	action_map=env.get_keys_to_action()
-	print(env.action_space.n)
-	print(action_map)
-	experience=[]
+	A=env.action_space.n
 
-	s=utilities.data_point()
+	#s=utilities.data_point()
 	policy_net=dqn().to(device)
 	trgt_policy_net=dqn().to(device)
-	target_net.load_state_dict(policy_net.state_dict())
-	target_net.eval()
+	#target_net.load_state_dict(policy_net.state_dict())
+	#target_net.eval()
 
-	optimizer=optim.RMSprop(policy_net.parameters())
-	memory=replay_memory(10000)
+	#optimizer=optim.RMSprop(policy_net.parameters())
+	#memory=replay_memory(10000)
+
+	replay_memories=[]
 
 	steps_done=0
 
 	done=False
 	for ep in range(episodes):
-		state=env.reset()
+		print('episode {}'.format(ep))
+		s_builder=data_point()
+		s_builder.add_frame(env.reset())
+		s=s_builder.get()
+		#state=env.reset()
+		t=1
+		done=False
 		while not done:
-			"""
-
-			#probably should delete this line
-			action = env.action_space.sample() 
+			
+			if np.random.uniform(0, 1) < epsilon:
+				a=np.random.randint(0, A)
+			else:
+				with torch.no_grad():
+					q_vals=policy_net(torch.tensor(np.array([s]), dtype=dtype, device=device))
+					a=int(torch.argmax(q_vals[0]))
 
 			#take action and collect reward and s'
-			s_prime, r, done, info = env.step(action) 
+			s_prime_frame, r, done, info = env.step(a) 
+			s_builder.add_frame(s_prime_frame)
+			s_prime=s_builder.get()
 
-			#capture experience
-			experience.append((state, action, s_prime))
+			#append as (s, a, r, s', done)
+			replay_memories.append((s.copy(), a, r, s_prime.copy(), done))
+			if len(replay_memories) > memory_size):
+				replay_memories.pop(0)
 
-			#set state to s_prime
-			state=s_prime
-			"""
+			s=s_prime
 
-			if s.ready():
-				print('goes here')
-			else:
-				action=0
-				new_frame, reward, done, _=env.step(action)
-				s.add_frame(new_frame)
+			#perform gradient descent step
+			if len(replay_memories) >= batch_size:
+				policy_net.train()
+
+			#TODO set target weights
+
+
+
+			t+=1
 				
 				
 
