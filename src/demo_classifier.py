@@ -8,16 +8,10 @@ import torchvision.transforms as T
 from utilities  import *
 import numpy as np
 from builtins import *
-<<<<<<< HEAD
-from torchsummary import summary
-
-
-=======
 import matplotlib.pyplot as plt
->>>>>>> f71f2e802dea15052e5118d97d5f8c453ee799b2
 
 class Demo_Classifier:
-    batch_size=4000
+    batch_size=400
     if torch.cuda.is_available():
         print('using GPU')
         device='cuda'
@@ -28,17 +22,6 @@ class Demo_Classifier:
     def preprocessing(self):
         #transform = T.Compose([T.ToTensor(),T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
         #data_set = torchvision.datasets.ImageFolder(root='../data', transform=transform)
-<<<<<<< HEAD
-        X,y= import_data()
-        data_set=[]
-        for i in range(len(X)):         
-            data_set.append([X[i],y[i]])
-        train_set_size = int(len(data_set) *0.8)
-        test_set_size = len(data_set) - train_set_size
-        train_set, test_set = data.random_split(data_set, [train_set_size, test_set_size])
-        loader_train = DataLoader(train_set, batch_size=64)
-        loader_test = DataLoader(test_set, batch_size=64)
-=======
         data_set= import_data()
 
         train_set_size = int(len(data_set) *0.8)
@@ -46,7 +29,6 @@ class Demo_Classifier:
         train_set, test_set = data.random_split(data_set, [train_set_size, test_set_size])
         loader_train = DataLoader(train_set, batch_size=self.batch_size)
         loader_test = DataLoader(test_set, batch_size=self.batch_size)
->>>>>>> f71f2e802dea15052e5118d97d5f8c453ee799b2
         return loader_train, loader_test
         
     def cnn_model(self):
@@ -75,31 +57,12 @@ class Demo_Classifier:
         )
         return model
 
-<<<<<<< HEAD
-    def check_accuracy(self,loader,model):
-=======
     def check_accuracy(self,loader_train, loader_test, model):
->>>>>>> f71f2e802dea15052e5118d97d5f8c453ee799b2
         num_correct = 0
         num_samples = 0
         model.eval()  
 
         with torch.no_grad():
-<<<<<<< HEAD
-            for x, y in loader:
-                x = x.to(device=self.device, dtype=self.dtype) 
-                y = y.to(device=self.device, dtype=torch.int64)
-                scores = model(x)
-                _, preds = scores.max(1)
-                num_correct += (preds == y).sum()
-                num_samples += preds.size(0)
-            acc = float(num_correct) / num_samples
-            print('Got %d / %d correct (%.2f)' % (num_correct, num_samples, 100 * acc))
-        
-    def train_part(self,model,loader_train):
-        epochs = 5
-        learning_rate = 0.001
-=======
             for x, y in loader_train:
                 x = x.to(device=self.device, dtype=self.dtype)  # move to device, e.g. GPU
                 y = y.to(device=self.device, dtype=torch.int64)
@@ -132,8 +95,7 @@ class Demo_Classifier:
 
     def train_part(self,model,loader_train, loader_test):
         epochs = 3
-        learning_rate = 3e-5
->>>>>>> f71f2e802dea15052e5118d97d5f8c453ee799b2
+        learning_rate = 5e-5
         weight_decay = 0.01
         optimizer=torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         model = model.to(device=self.device) 
@@ -189,21 +151,12 @@ class Demo_Classifier:
         plt.show()
                     
         return model
-            
-    
+   
         
 loader_train_set,loader_test_set = Demo_Classifier().preprocessing()   
 model = Demo_Classifier().cnn_model()
-<<<<<<< HEAD
-summary(model,(4,210,160))
-print('Training Set Accuracy')
-model_aftertrain=Demo_Classifier().train_part(model,loader_train_set)
-print('Test Set Accuracy:')
-Demo_Classifier().check_accuracy(loader_test_set, model_aftertrain)   
-=======
 model_aftertrain=Demo_Classifier().train_part(model,loader_train_set, loader_test_set)
-    
->>>>>>> f71f2e802dea15052e5118d97d5f8c453ee799b2
+
     
     
     
