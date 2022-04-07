@@ -13,7 +13,11 @@ point=data_point()
 data=[]
 start_key=ord(' ')
 in_progress=False
+LEFT=ord('i')
+RIGHT=ord('p')
 
+#action_map={(None,): 0, (32,): 1, (100,): 2, (97,): 3}
+action_map={(None,): 0, (32,): 1, (RIGHT,): 2, (LEFT,): 3}
 if __name__ == '__main__':
 
 	#file parameters
@@ -23,7 +27,7 @@ if __name__ == '__main__':
 	fname=data_dir+'demonstrator_{}.pickle'.format(time)
 
 	#create gym environment and collect data
-	play(env = gym.make('Breakout-v0', obs_type='grayscale'), zoom=4, callback=collector.callback)
+	play(env = gym.make('Breakout-v0', obs_type='grayscale'), zoom=4, callback=collector.callback, keys_to_action=action_map)
 
 	#create folder for data
 	if not os.path.isdir(data_dir): 

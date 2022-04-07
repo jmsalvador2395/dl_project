@@ -188,4 +188,15 @@ def visualize_frame(frame=None):
 	plt.imshow(frame, cmap='gray')
 	plt.show()
 
+"""
+
+"""
+def calc_conv_output(dims, kernel_size, stride, pads=(0,0)):
+	height=(dims[0]-kernel_size+(2*pads[0]))/stride+1
+	width=(dims[1]-kernel_size+pads[1])/stride+1
+	return (height, width)
+
+def calc_pool_output(dims, pool_size, pads=(0,0)):
+	return ((dims[0]+(2*pads[0]))/pool_size, (dims[1]+(2*pads[1]))/pool_size)
+	
 
