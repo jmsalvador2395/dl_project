@@ -32,6 +32,7 @@ plt.ion()
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.set_default_dtype(torch.float32)
+torch.cuda.set_device(0)
 
 class dqn(nn.Module):
 	def __init__(self):
@@ -50,13 +51,15 @@ class dqn(nn.Module):
 			nn.MaxPool2d(2)
 		)
 
-		fc = nn.Linear(32*6*5, 4)
+		fc1 = nn.Linear(32*6*5, 256)
+		fc2 = nn.Linear(256, 4)
 
 		self.model = nn.Sequential(
 			layer1,
 			layer2,
 			nn.Flatten(),
-			fc
+			fc1,
+			fc2
 		)
 
 	def forward(self, x):
