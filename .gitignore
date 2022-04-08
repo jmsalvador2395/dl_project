@@ -3,6 +3,7 @@
 ROMs/*
 unused/*
 project/*
+*.mdl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
