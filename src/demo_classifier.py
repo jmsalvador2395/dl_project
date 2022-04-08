@@ -9,6 +9,7 @@ from utilities    import *
 import numpy as np
 from builtins import *
 import matplotlib.pyplot as plt
+import gym
 
 num_classes=4
 
@@ -157,4 +158,7 @@ if __name__ == '__main__':
     loader_train_set,loader_test_set = Demo_Classifier().preprocessing()   
     model = Demo_Classifier().cnn_model()
     model_aftertrain=Demo_Classifier().train_part(model,loader_train_set, loader_test_set)
+    torch.save(model_aftertrain, "bc_model.h5")
+    #reverse_action_map={0:(None,), 1:(32,), 2:(RIGHT,), 3:(LEFT,)}
+    
     

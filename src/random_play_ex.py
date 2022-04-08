@@ -30,7 +30,6 @@ if __name__ == '__main__':
 
 		#set state to s_prime
 		state=s_prime
-		print(state.shape)
-		break
+		#print(state.shape)
 
 
