@@ -5,6 +5,7 @@ import os
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 import copy
+import random
 
 
 
@@ -126,6 +127,9 @@ class data_collector:
 		temp=[self.data[i] for i in active_data]
 		self.data=temp
 
+	def prune_noops(self):
+		self.data=prune_noops(self.data)
+
 	'''
 	experimental
 
@@ -170,6 +174,16 @@ def import_data(data_dir='../data/'):
 	print("----- finished importing data -----\n")
 
 	return data_set
+
+"""
+cuts down the amount of NOOPs  in the dataset
+"""
+def prune_noops(data):
+	noops=[i for i in data if i[1]==0]
+	non_noops=[i for i in data if i[1]>0]
+	avg_act_count=int(len(non_noops)/3)
+	pruned_noops=random.sample(noops, avg_act_count)
+	return pruned_noops + non_noops
 
 """
 use this to random sample a data point from the data folder and plot its contents
