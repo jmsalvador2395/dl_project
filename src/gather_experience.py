@@ -34,7 +34,9 @@ if __name__ == '__main__':
 		os.mkdir(data_dir)
 
 	#prune data
-	collector.prune_data(debug=False)
+	#collector.prune_data(debug=False)
+
+	collector.convert_noops_breakout()
 
 	#save data to path
 	with open(fname, 'wb') as fh:
