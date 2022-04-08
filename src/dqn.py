@@ -9,7 +9,6 @@ from itertools import count
 from PIL import Image
 #import utilities
 from utilities import data_point
-import copy
 import math
 
 
@@ -64,7 +63,7 @@ class dqn(nn.Module):
 		return self.model(x)
 
 	def update_model(self, memories, batch_size, gamma, 
-			  		 alpha, trgt_model, device, optimizer):
+					 trgt_model, device, optimizer):
 		#set model to training mode
 		self.train()
 
@@ -84,8 +83,8 @@ class dqn(nn.Module):
 		done =			np.array([i[4] for i in minibatch])
 
 		#get indeces for 
-		finished_idx = 		np.where(done == True)
-		unfinished_idx = 	np.where(done == False)
+		finished_idx =		np.where(done == True)
+		unfinished_idx =	np.where(done == False)
 
 		#convert arrays to torch tensors
 		states =		torch.tensor(states, dtype=dt).to(device)
@@ -96,7 +95,6 @@ class dqn(nn.Module):
 		#create predictions
 		policy_scores=self.forward(states)
 
-
 		#create labels
 		y=policy_scores.clone().detach()
 
@@ -106,44 +104,19 @@ class dqn(nn.Module):
 
 		#update labels
 		y[range(len(y)), actions] = rewards + gamma*trgt_qvals*done
+
+		loss=loss_fn(policy_scores, y)
+
+		self.zero_grad()
+		loss.backward()
+		optimizer.step()
 		
 		#set model back to evaluation mode
 		self.eval()
 
-
-
-	'''
-	def train(self, batch_size, gamma, policy_net, optimizer):
-		if len(self.memory) < batch_size:
-			return
-		transitions=self.memory.sample(batch_size)
-		
-		batch=Transition(*zip(*transitions))
-
-		non_final_mask=torch.tensor(tuple(map(lambda s: s is not None,
-											batch.next_state)), device=device, dtype=torch.bool)
-		non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
-
-		state_batch=torch.cat(batch.state)
-		action_batch=torch.cat(batch.action)
-		reward_batch=torch.cat(batch.reward)
-
-		state_action_values=self(state_batch).gather(1, action_batch)
-
-		next_state_values=torch.zeros(batch_size, device=device)
-		next_state_values[non_final_mask]=target_net(non_final_next_states).max(1)[0].detach()
-
-		expected_state_action_values=(next_state_values*gamma)+reward_batch
-
-		loss=nn.SmoothL1Loss()
-		loss=criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-
-		optimizer.zero_grad()
-		loss.backward()
-		for param in self.parameters():
-			param.grad.gdata.clamp_(-1, 1)
-		optimizer.step()
-		'''
+'''
+local functions
+'''
 
 def epsilon_update(epsilon, eps_start, eps_end, eps_decay, total_steps):
 	return eps_end + (eps_start - eps_end) * math.exp(-1 * total_steps / eps_decay)
@@ -151,7 +124,7 @@ def epsilon_update(epsilon, eps_start, eps_end, eps_decay, total_steps):
 if __name__ == '__main__':
 	
 	episodes=300			#total amount of episodes to evaluate
-	batch_size=400			#minibatch size for training
+	batch_size=40			#minibatch size for training
 	gamma=.999				#gamma for MDP
 	alpha=1e-2				#learning rate
 
@@ -161,6 +134,7 @@ if __name__ == '__main__':
 	eps_end=.05
 	eps_decay=200			
 
+	update_steps=40			#update policy after every 
 	C=10					#update target model after every C steps
 	dtype=torch.float32		#dtype for torch tensors
 	total_steps=0			#tracks global time steps
@@ -192,8 +166,7 @@ if __name__ == '__main__':
 	steps_done=0
 
 	for ep in range(episodes):
-
-		print('episode {}'.format(ep))
+		total_reward=0
 
 		s_builder=data_point()				#initialize phi transformation function
 		s_builder.add_frame(env.reset())	
@@ -223,15 +196,14 @@ if __name__ == '__main__':
 			#append to replay_memories as (s, a, r, s', done)
 			replay_memories.append((s.copy(), a, r, s_prime.copy(), done))
 			if len(replay_memories) > memory_size:
-				print('pruned memories')
 				replay_memories.pop(0)
 
 			s=s_prime
 
 			#perform gradient descent step
-			if len(replay_memories) >= batch_size:
+			if len(replay_memories) >= batch_size and total_steps % update_steps == 0:
 				policy_net.update_model(replay_memories, batch_size, gamma, 
-								 		alpha, trgt_policy_net, device, optimizer)
+										trgt_policy_net, device, optimizer)
 
 			#set target weights to policy net weights every C steps
 			if total_steps % C == 0:
@@ -240,6 +212,8 @@ if __name__ == '__main__':
 			#increment counters
 			total_steps+=1
 			t+=1
+			total_reward+=r
+		print('episode: {}, reward: {}, epsilon: {}'.format(ep, total_reward, epsilon))
 				
 				
 
