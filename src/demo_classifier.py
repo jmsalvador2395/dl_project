@@ -99,8 +99,9 @@ class Demo_Classifier:
 
 
 	def train_part(self,model,loader_train, loader_test):
-		epochs = 4
-		learning_rate = 3e-5
+		epochs = 100
+		#learning_rate = 3e-5
+		learning_rate = 1e-4
 		weight_decay = 0.01
 		optimizer=torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 		model = model.to(device=self.device) 
