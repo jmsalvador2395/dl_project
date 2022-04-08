@@ -10,6 +10,7 @@ from PIL import Image
 #import utilities
 from utilities import data_point
 import math
+import datetime
 
 
 import torch
@@ -82,9 +83,11 @@ class dqn(nn.Module):
 		next_states =	np.array([i[3] for i in minibatch])
 		done =			np.array([i[4] for i in minibatch])
 
-		#get indeces for 
+		'''
+		#this doesn't need to exist
 		finished_idx =		np.where(done == True)
 		unfinished_idx =	np.where(done == False)
+		'''
 
 		#convert arrays to torch tensors
 		states =		torch.tensor(states, dtype=dt).to(device)
@@ -123,18 +126,19 @@ def epsilon_update(epsilon, eps_start, eps_end, eps_decay, total_steps):
 
 if __name__ == '__main__':
 	
-	episodes=300			#total amount of episodes to evaluate
-	batch_size=40			#minibatch size for training
+	episodes=20000			#total amount of episodes to evaluate
+	batch_size=32			#minibatch size for training
 	gamma=.999				#gamma for MDP
 	alpha=1e-2				#learning rate
+	k=4						#fram skip number
 
 	#epsilon greedy parameters
 	epsilon=.9
 	eps_start=.9
 	eps_end=.05
-	eps_decay=200			
+	eps_decay=1e6			#makes it so that decay applies over 1 million time steps
 
-	update_steps=40			#update policy after every 
+	#update_steps=10			#update policy after every 
 	C=10					#update target model after every C steps
 	dtype=torch.float32		#dtype for torch tensors
 	total_steps=0			#tracks global time steps
@@ -177,7 +181,7 @@ if __name__ == '__main__':
 		done=False							#tracks when episodes end
 		while not done:
 			
-			#select action
+			#select action using epsilon greedy policy
 			if np.random.uniform(0, 1) < epsilon:
 				a=np.random.randint(0, A)
 			else:
@@ -198,10 +202,9 @@ if __name__ == '__main__':
 			if len(replay_memories) > memory_size:
 				replay_memories.pop(0)
 
-			s=s_prime
-
 			#perform gradient descent step
-			if len(replay_memories) >= batch_size and total_steps % update_steps == 0:
+			#if len(replay_memories) >= batch_size and total_steps % update_steps == 0:
+			if len(replay_memories) >= batch_size:
 				policy_net.update_model(replay_memories, batch_size, gamma, 
 										trgt_policy_net, device, optimizer)
 
@@ -213,7 +216,23 @@ if __name__ == '__main__':
 			total_steps+=1
 			t+=1
 			total_reward+=r
-		print('episode: {}, reward: {}, epsilon: {}'.format(ep, total_reward, epsilon))
+
+			#skip k frames
+			for i in range(k):
+				s_prime_frame, r, done, info = env.step(0)		#step with NOOP action
+				total_reward+=r
+				s_builder.add_frame(s_prime_frame)
+
+			#update state
+			#s=s_prime
+			s=s_builder.get()
+
+			# save model cheeckpoint every 2000 time steps
+			if total_steps % 2000  == 0:
+				time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
+				torch.save(policy_net, model_path + 'dqn_checkpoint_' + time + '.mdl')
+				print('model checkpoint saved')
+		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep length: {4}'.format(ep, total_reward, epsilon, total_steps, t))
 				
 				
 
