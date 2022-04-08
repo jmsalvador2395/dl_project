@@ -50,7 +50,8 @@ class Demo_Classifier:
         )
 
 
-        fc = nn.Linear(32*6*5, 4)
+		fc1 = nn.Linear(32*6*5, 256)
+        fc2 = nn.Linear(256, 4)
 
         model = nn.Sequential(
             layer1,
