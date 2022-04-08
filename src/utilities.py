@@ -51,7 +51,8 @@ class data_point:
 			self.point[self.layer_count]=frame
 			self.layer_count+=1
 	def get(self):
-		return copy.deepcopy(self.point)
+		#return copy.deepcopy(self.point)
+				return self.point.copy()
 	
 	
 class data_collector:
@@ -83,7 +84,7 @@ class data_collector:
 
 		self.point.add_frame(s)
 		
-		if self.point.ready() and self.in_progress:
+		if self.in_progress:
 			self.data.append((self.point.get(), a))
 
 	"""
@@ -122,7 +123,33 @@ class data_collector:
 				visualize_block(self.data[i][0])
 
 		print('pruned {} inactive data points'.format(len(inactive_data)))
-		self.data=[self.data[i] for i in active_data]
+		temp=[self.data[i] for i in active_data]
+		self.data=temp
+
+	'''
+	experimental
+
+	replace actions for noops and frozen states to use FIRE action
+	'''
+	def convert_noops_breakout(self):
+		active_data=[]
+		inactive_data=[]
+		for i in range(len(self.data)):
+
+			s, a=self.data[i]
+			noop=(a==0)
+			is_still=(s == s[0]).all() and noop
+
+			if not is_still:
+				active_data.append(i)
+			else:
+				inactive_data.append(i)
+
+		temp=[self.data[i] for i in active_data] + [(self.data[i][0], 1) for i in inactive_data]
+		self.data=temp
+
+
+
 
 """
 returns the data.
