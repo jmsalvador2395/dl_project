@@ -20,28 +20,17 @@ import torchvision.transforms as T
 
 model_path='../models/'
 
+'''
 Transition=namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 
 is_python='inline' in matplotlib.get_backend()
 if is_python:
 	from IPython import display
 plt.ion()
+'''
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.set_default_dtype(torch.float32)
-
-class replay_memory(object):
-	def __init__(self, capacity):
-		self.memory = deque([], maxlen=capacity)
-	
-	def push(self, *args):
-		self.memory.append(Transition(*args))
-
-	def sample(self, batch_size):
-		return random.sample(self.memory, batch_size)
-	
-	def __len__(self):
-		return len(self.memory)
 
 class dqn(nn.Module):
 	def __init__(self):
@@ -73,8 +62,30 @@ class dqn(nn.Module):
 		x = x.to(device)
 		return self.model(x)
 
-	def train(self):
-		print('train here')
+	def update_model(self, memories, batch_size, gamma, 
+			  trgt_model, device):
+
+		#sample minibatch
+		minibatch=random.sample(memories, batch_size)
+
+		#split tuples into groups and convert to arrays
+		states =		np.array([i[0] for i in minibatch])
+		actions =		np.array([i[1] for i in minibatch])
+		rewards =		np.array([i[2] for i in minibatch])
+		next_states =	np.array([i[3] for i in minibatch])
+		done =			np.array([i[4] for i in minibatch])
+
+		#convert arrays to torch tensors
+		states =		torch.tensor(states).to(device)
+		actions =		torch.tensor(actions).to(device)
+		rewards =		torch.tensor(rewards).to(device)
+		next_states =	torch.tensor(next_states).to(device)
+		done =			torch.tensor(done).to(device)
+
+
+
+
+		pass
 
 	'''
 	def train(self, batch_size, gamma, policy_net, optimizer):
@@ -123,7 +134,7 @@ if __name__ == '__main__':
 	target_update=10
 	dtype=torch.float32
 
-	memory_size=10000
+	memory_size=4000
 
 	env = gym.make('Breakout-v0', obs_type='grayscale', render_mode='human')
 
@@ -137,11 +148,12 @@ if __name__ == '__main__':
 
 	#s=utilities.data_point()
 	policy_net=dqn().to(device)
+	policy_net.eval()
 	trgt_policy_net=dqn().to(device)
 	#target_net.load_state_dict(policy_net.state_dict())
 	#target_net.eval()
 
-	#optimizer=optim.RMSprop(policy_net.parameters())
+	optimizer=optim.RMSprop(policy_net.parameters())
 	#memory=replay_memory(10000)
 
 	replay_memories=[]
@@ -163,7 +175,7 @@ if __name__ == '__main__':
 				a=np.random.randint(0, A)
 			else:
 				with torch.no_grad():
-					q_vals=policy_net(torch.tensor(np.array([s]), dtype=dtype, device=device))
+					q_vals=policy_net(torch.tensor(s[np.newaxis], dtype=dtype, device=device))
 					a=int(torch.argmax(q_vals[0]))
 
 			#take action and collect reward and s'
@@ -173,14 +185,16 @@ if __name__ == '__main__':
 
 			#append as (s, a, r, s', done)
 			replay_memories.append((s.copy(), a, r, s_prime.copy(), done))
-			if len(replay_memories) > memory_size):
+			if len(replay_memories) > memory_size:
+				print('pruned memories')
 				replay_memories.pop(0)
 
 			s=s_prime
 
 			#perform gradient descent step
 			if len(replay_memories) >= batch_size:
-				policy_net.train()
+				policy_net.update_model(replay_memories, batch_size, gamma, 
+								 trgt_policy_net, device)
 
 			#TODO set target weights
 
