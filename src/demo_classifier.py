@@ -99,7 +99,7 @@ class Demo_Classifier:
 
 
 	def train_part(self,model,loader_train, loader_test):
-		epochs = 100
+		epochs = 180
 		#learning_rate = 3e-5
 		learning_rate = 1e-4
 		weight_decay = 0.01
