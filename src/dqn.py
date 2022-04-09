@@ -32,7 +32,6 @@ plt.ion()
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.set_default_dtype(torch.float32)
-torch.cuda.set_device(0)
 
 class dqn(nn.Module):
 	def __init__(self):
