@@ -62,7 +62,8 @@ class dqn(nn.Module):
 		#set model to training mode
 		self.train()
 
-		loss_fn = nn.MSELoss()
+		#loss_fn = nn.MSELoss()
+		loss_fn = nn.SmoothL1Loss()		#Huber Loss
 
 		#set torch data type
 		dt=torch.float32
@@ -76,12 +77,6 @@ class dqn(nn.Module):
 		rewards =		np.array([i[2] for i in minibatch])
 		next_states =	np.array([i[3] for i in minibatch])
 		done =			np.array([i[4] for i in minibatch])
-
-		'''
-		#this doesn't need to exist
-		finished_idx =		np.where(done == True)
-		unfinished_idx =	np.where(done == False)
-		'''
 
 		#convert arrays to torch tensors
 		states =		torch.tensor(states, dtype=dt).to(device)
@@ -115,12 +110,15 @@ class dqn(nn.Module):
 local functions
 '''
 
-def epsilon_update(epsilon, eps_start, eps_end, eps_decay, total_steps):
-	return eps_end + (eps_start - eps_end) * math.exp(-1 * total_steps / eps_decay)
+def epsilon_update(epsilon, eps_start, eps_end, eps_decay, step):
+	return eps_end + (eps_start - eps_end) * math.exp(-1 * step / eps_decay)
 
-def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000):
+def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=32):
+
+	eps_start=float(eps_start)
+	episodes=int(episodes)
+	batch_size=int(batch_size)			#minibatch size for training
 	
-	batch_size=32			#minibatch size for training
 	gamma=.999				#gamma for MDP
 	alpha=1e-2				#learning rate
 	k=4						#fram skip number
@@ -129,11 +127,13 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000):
 	epsilon=eps_start
 	eps_end=.05
 	eps_decay=1e6			#makes it so that decay applies over 1 million time steps
+	frame_threshold=1e6		#used to update epsilon
 
 	#update_steps=10			#update policy after every 
 	C=10					#update target model after every C steps
 	dtype=torch.float32		#dtype for torch tensors
 	total_steps=0			#tracks global time steps
+	frame_count=0			#used for updating epsilon
 
 	memory_size=4000		#size of replay memory buffer
 
@@ -148,6 +148,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000):
 	#initialize main network
 	policy_net=dqn().to(device)
 	
+	#load pre-trained model if specified
 	if pre_trained_model is not None:
 		policy_net=torch.load(model_path + pre_trained_model)
 		print('loaded pre-trained model')
@@ -190,12 +191,15 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000):
 					a=int(torch.argmax(q_vals[0]))
 
 			#update epsilon value
-			epsilon = epsilon_update(epsilon, eps_start, eps_end, eps_decay, total_steps)
+			epsilon = epsilon_update(epsilon, eps_start, eps_end, eps_decay, frame_count)
 
 			#take action and collect reward and s'
 			s_prime_frame, r, done, info = env.step(a) 
 			s_builder.add_frame(s_prime_frame)
 			s_prime=s_builder.get()
+
+			#update frame count
+			frame_count+=1
 
 			#append to replay_memories as (s, a, r, s', done)
 			replay_memories.append((s.copy(), a, r, s_prime.copy(), done))
@@ -222,6 +226,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000):
 				s_prime_frame, r, done, info = env.step(0)		#step with NOOP action
 				total_reward+=r
 				s_builder.add_frame(s_prime_frame)
+				frame_count+=1
 
 			#update state
 			#s=s_prime
@@ -232,7 +237,9 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000):
 				time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
 				torch.save(policy_net, model_path + 'dqn_checkpoint_' + time + '.mdl')
 				print('model checkpoint saved')
-		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep length: {4}'.format(ep, total_reward, epsilon, total_steps, t))
+
+
+		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}, frame_count: {5}'.format(ep, total_reward, epsilon, total_steps, t, frame_count))
 				
 				
 if __name__ == '__main__':
