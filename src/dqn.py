@@ -11,6 +11,7 @@ from PIL import Image
 from utilities import data_point
 import math
 import datetime
+import sys
 
 
 import torch
@@ -20,15 +21,6 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 
 model_path='../models/'
-
-'''
-Transition=namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
-
-is_python='inline' in matplotlib.get_backend()
-if is_python:
-	from IPython import display
-plt.ion()
-'''
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.set_default_dtype(torch.float32)
@@ -126,17 +118,15 @@ local functions
 def epsilon_update(epsilon, eps_start, eps_end, eps_decay, total_steps):
 	return eps_end + (eps_start - eps_end) * math.exp(-1 * total_steps / eps_decay)
 
-if __name__ == '__main__':
+def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000):
 	
-	episodes=20000			#total amount of episodes to evaluate
 	batch_size=32			#minibatch size for training
 	gamma=.999				#gamma for MDP
 	alpha=1e-2				#learning rate
 	k=4						#fram skip number
 
 	#epsilon greedy parameters
-	epsilon=.9
-	eps_start=.9
+	epsilon=eps_start
 	eps_end=.05
 	eps_decay=1e6			#makes it so that decay applies over 1 million time steps
 
@@ -157,6 +147,14 @@ if __name__ == '__main__':
 
 	#initialize main network
 	policy_net=dqn().to(device)
+	
+	if pre_trained_model is not None:
+		policy_net=torch.load(model_path + pre_trained_model)
+		print('loaded pre-trained model')
+	else:
+		policy_net=dqn()
+
+	policy_net=policy_net.to(device)
 	policy_net.eval()
 
 	#initialize target network
@@ -237,6 +235,7 @@ if __name__ == '__main__':
 		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep length: {4}'.format(ep, total_reward, epsilon, total_steps, t))
 				
 				
-
+if __name__ == '__main__':
+	main(*sys.argv)
 
 
