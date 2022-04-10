@@ -60,10 +60,7 @@ class dqn(nn.Module):
 	def update_model(self, memories, batch_size, gamma, 
 					 trgt_model, device, optimizer):
 		#set model to training mode
-		self.train()
-
-		#loss_fn = nn.MSELoss()
-		loss_fn = nn.SmoothL1Loss()		#Huber Loss
+		#self.train()
 
 		#set torch data type
 		dt=torch.float32
@@ -76,35 +73,38 @@ class dqn(nn.Module):
 		actions =		np.array([i[1] for i in minibatch])
 		rewards =		np.array([i[2] for i in minibatch])
 		next_states =	np.array([i[3] for i in minibatch])
-		done =			np.array([i[4] for i in minibatch])
+		done =		   ~np.array([i[4] for i in minibatch]) #use ~ on done to use in update calculation
 
 		#convert arrays to torch tensors
-		states =		torch.tensor(states, dtype=dt).to(device)
-		rewards =		torch.tensor(rewards, dtype=dt).to(device)
-		next_states =	torch.tensor(next_states, dtype=dt).to(device)
-		done =			torch.tensor(done).to(device)
+		states =		torch.tensor(states, dtype=dt, device=device)
+		rewards =		torch.tensor(rewards, dtype=dt, device=device)
+		next_states =	torch.tensor(next_states, dtype=dt, device=device)
+		done =			torch.tensor(done, device=device)
 
 		#create predictions
 		policy_scores=self.forward(states)
-
-		#create labels
-		y=policy_scores.clone().detach()
+		policy_scores=policy_scores[range(batch_size), actions]		#TODO maybe use this for scores instead
 
 		#create max(Q vals) from target policy net
 		trgt_policy_scores=trgt_model(next_states)
 		trgt_qvals=trgt_policy_scores.max(1)[0]
 
-		#update labels
-		y[range(len(y)), actions] = rewards + gamma*trgt_qvals*done
+		#create labels
+		#y=policy_scores.clone().detach()
+		#y[range(batch_size), actions] = rewards + gamma*trgt_qvals*done
+		y=rewards + gamma*trgt_qvals*done								#TODO maybe use this for labels instead
 
+		#compute loss using Huber Loss
+		loss_fn = nn.SmoothL1Loss()
 		loss=loss_fn(policy_scores, y)
 
+		#gradient descent step
 		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step()
 		
 		#set model back to evaluation mode
-		self.eval()
+		#self.eval()
 
 '''
 local functions
@@ -135,7 +135,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	total_steps=0			#tracks global time steps
 	frame_count=0			#used for updating epsilon
 
-	memory_size=4000		#size of replay memory buffer
+	memory_size=10000		#size of replay memory buffer
 
 	
 	#create gym environment
@@ -157,7 +157,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 		policy_net=dqn()
 
 	policy_net=policy_net.to(device)
-	policy_net.eval()
+	#policy_net.eval()
 
 	#initialize target network
 	trgt_policy_net=dqn().to(device)
@@ -222,16 +222,18 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			t+=1
 			total_reward+=r
 
+			"""
 			#skip k frames
 			for i in range(k):
 				s_prime_frame, r, done, info = env.step(0)		#step with NOOP action
 				total_reward+=r
 				s_builder.add_frame(s_prime_frame)
 				frame_count+=1
+			"""
 
 			#update state
-			#s=s_prime
-			s=s_builder.get()
+			s=s_prime
+			#s=s_builder.get()
 
 			# save model cheeckpoint every 2000 time steps
 			if total_steps % 2000  == 0:
