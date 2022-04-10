@@ -99,7 +99,7 @@ class Demo_Classifier:
 
 
 	def train_part(self,model,loader_train, loader_test):
-		epochs = 180
+		epochs = 40
 		#learning_rate = 3e-5
 		learning_rate = 1e-4
 		weight_decay = 0.01
@@ -162,6 +162,6 @@ if __name__ == '__main__':
 	model = Demo_Classifier().cnn_model()
 	model_aftertrain=Demo_Classifier().train_part(model,loader_train_set, loader_test_set)
 	torch.save(model_aftertrain, "bc_model.h5")
-	#reverse_action_map={0:(None,), 1:(32,), 2:(RIGHT,), 3:(LEFT,)}
+	
 	
 	
