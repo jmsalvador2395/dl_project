@@ -99,7 +99,7 @@ class dqn(nn.Module):
 
 		loss=loss_fn(policy_scores, y)
 
-		self.zero_grad()
+		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step()
 		
@@ -150,7 +150,8 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	
 	#load pre-trained model if specified
 	if pre_trained_model is not None:
-		policy_net=torch.load(model_path + pre_trained_model)
+		policy_net=torch.load(model_path + pre_trained_model,
+                                      map_location=torch.device(device))
 		print('loaded pre-trained model')
 	else:
 		policy_net=dqn()
