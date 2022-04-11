@@ -42,7 +42,11 @@ class dqn(nn.Module):
 			nn.MaxPool2d(2)
 		)
 
-		fc1 = nn.Linear(32*6*5, 256)
+		fc1 = nn.Sequential(
+			nn.Linear(32*6*5, 256),
+			nn.ReLU()
+		)
+		#fc1 = nn.Linear(32*6*5, 256)
 		fc2 = nn.Linear(256, 4)
 
 		self.model = nn.Sequential(
@@ -76,7 +80,7 @@ class dqn(nn.Module):
 		done =		   ~np.array([i[4] for i in minibatch]) #use ~ on done to use in update calculation
 
 		#convert arrays to torch tensors
-		states =		torch.tensor(states, dtype=dt, device=device)
+		states =		torch.tensor(states, dtype=dt, device=device, requires_grad=True)
 		rewards =		torch.tensor(rewards, dtype=dt, device=device)
 		next_states =	torch.tensor(next_states, dtype=dt, device=device)
 		done =			torch.tensor(done, device=device)
@@ -208,8 +212,8 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 				replay_memories.pop(0)
 
 			#perform gradient descent step
-			#if len(replay_memories) >= batch_size and total_steps % update_steps == 0:
-			if len(replay_memories) >= batch_size:
+			#if len(replay_memories) > batch_size and total_steps % update_steps == 0:
+			if len(replay_memories) > batch_size:
 				policy_net.update_model(replay_memories, batch_size, gamma, 
 										trgt_policy_net, device, optimizer)
 
