@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
 from PIL import Image
-#import utilities
 from utilities import data_point
 import math
 import datetime
@@ -44,28 +43,32 @@ class dqn(nn.Module):
 
 		fc1 = nn.Sequential(
 			nn.Linear(32*6*5, 256),
+			nn.LayerNorm(256),
 			nn.ReLU()
 		)
-		#fc1 = nn.Linear(32*6*5, 256)
-		fc2 = nn.Linear(256, 4)
+
+		fc2 = nn.Sequential(
+			nn.Linear(256, 256),
+			nn.LayerNorm(256),
+			nn.ReLU()
+		)
+
+		fc3 = nn.Linear(256, 4)
 
 		self.model = nn.Sequential(
 			layer1,
 			layer2,
 			nn.Flatten(),
 			fc1,
-			fc2
+			fc2,
+			fc3
 		)
 
 	def forward(self, x):
-		x = x.to(device)
 		return self.model(x)
 
 	def update_model(self, memories, batch_size, gamma, 
 					 trgt_model, device, optimizer):
-		#set model to training mode
-		#self.train()
-
 		#set torch data type
 		dt=torch.float32
 
@@ -87,16 +90,14 @@ class dqn(nn.Module):
 
 		#create predictions
 		policy_scores=self.forward(states)
-		policy_scores=policy_scores[range(batch_size), actions]		#TODO maybe use this for scores instead
 
 		#create max(Q vals) from target policy net
 		trgt_policy_scores=trgt_model(next_states)
 		trgt_qvals=trgt_policy_scores.max(1)[0]
 
 		#create labels
-		#y=policy_scores.clone().detach()
-		#y[range(batch_size), actions] = rewards + gamma*trgt_qvals*done
-		y=rewards + gamma*trgt_qvals*done								#TODO maybe use this for labels instead
+		y=policy_scores.clone().detach()
+		y[range(batch_size), actions] = rewards + gamma*trgt_qvals*done
 
 		#compute loss using Huber Loss
 		loss_fn = nn.SmoothL1Loss()
@@ -106,9 +107,6 @@ class dqn(nn.Module):
 		optimizer.zero_grad()
 		loss.backward()
 		optimizer.step()
-		
-		#set model back to evaluation mode
-		#self.eval()
 
 '''
 local functions
@@ -129,17 +127,15 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 
 	#epsilon greedy parameters
 	epsilon=eps_start
-	eps_end=.05
-	eps_decay=5e5			#makes it so that decay applies over ~1 million time steps
-	frame_threshold=1e6		#used to update epsilon
+	eps_end=.1
+	eps_decay=3e5			#makes it so that decay applies over ~1 million time steps
 
 	#update_steps=10			#update policy after every 
 	C=10					#update target model after every C steps
 	dtype=torch.float32		#dtype for torch tensors
 	total_steps=0			#tracks global time steps
-	frame_count=0			#used for updating epsilon
 
-	memory_size=10000		#size of replay memory buffer
+	memory_size=15000		#size of replay memory buffer
 
 	
 	#create gym environment
@@ -155,7 +151,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	#load pre-trained model if specified
 	if pre_trained_model is not None:
 		policy_net=torch.load(model_path + pre_trained_model,
-                                      map_location=torch.device(device))
+									  map_location=torch.device(device))
 		print('loaded pre-trained model')
 	else:
 		policy_net=dqn()
@@ -196,15 +192,12 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 					a=int(torch.argmax(q_vals[0]))
 
 			#update epsilon value
-			epsilon = epsilon_update(epsilon, eps_start, eps_end, eps_decay, frame_count)
+			epsilon = epsilon_update(epsilon, eps_start, eps_end, eps_decay, total_steps)
 
 			#take action and collect reward and s'
 			s_prime_frame, r, done, info = env.step(a) 
 			s_builder.add_frame(s_prime_frame)
 			s_prime=s_builder.get()
-
-			#update frame count
-			frame_count+=1
 
 			#append to replay_memories as (s, a, r, s', done)
 			replay_memories.append((s.copy(), a, r, s_prime.copy(), done))
@@ -226,27 +219,18 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			t+=1
 			total_reward+=r
 
-			"""
-			#skip k frames
-			for i in range(k):
-				s_prime_frame, r, done, info = env.step(0)		#step with NOOP action
-				total_reward+=r
-				s_builder.add_frame(s_prime_frame)
-				frame_count+=1
-			"""
-
 			#update state
 			s=s_prime
-			#s=s_builder.get()
 
-			# save model cheeckpoint every 2000 time steps
-			if total_steps % 2000  == 0:
+			# save model cheeckpoint every 4000 time steps
+			if total_steps % 4000  == 0:
 				time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
-				torch.save(policy_net, model_path + 'dqn_checkpoint_' + time + '.mdl')
-				print('model checkpoint saved')
+				fname=model_path + 'dqn_checkpoint_' + time + 'pth'
+				torch.save(policy_net, fname)
+				print('model checkpoint saved to {}'.format(fname))
 
 
-		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}, frame_count: {5}'.format(ep, total_reward, epsilon, total_steps, t, frame_count))
+		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}'.format(ep, total_reward, epsilon, total_steps, t))
 				
 				
 if __name__ == '__main__':
