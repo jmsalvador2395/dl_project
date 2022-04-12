@@ -130,7 +130,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	#epsilon greedy parameters
 	epsilon=eps_start
 	eps_end=.05
-	eps_decay=1e6			#makes it so that decay applies over 1 million time steps
+	eps_decay=5e5			#makes it so that decay applies over ~1 million time steps
 	frame_threshold=1e6		#used to update epsilon
 
 	#update_steps=10			#update policy after every 
