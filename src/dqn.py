@@ -69,9 +69,6 @@ class dqn(nn.Module):
 
 	def update_model(self, memories, batch_size, gamma, 
 					 trgt_model, device, optimizer):
-		#set torch data type
-		dt=torch.float32
-
 		#sample minibatch
 		minibatch=random.sample(memories, batch_size)
 
@@ -194,11 +191,11 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			s_prime=s_builder.get()
 
 			#append to replay_memories as (s, a, r, s', done)
-			replay_memories.append((torch.tensor(s), 
+			replay_memories.append((torch.tensor(s, dtype=dtype, device=device), 
 									a, 
-									torch.tensor(r), 
-									torch.tensor(s_prime), 
-									torch.tensor(~done)))
+									torch.tensor(r, dtype=dtype, device=device), 
+									torch.tensor(s_prime, dtype=dtype, device=device), 
+									torch.tensor(~done, device=device)))
 
 			#remove oldest sample to maintain memory size
 			if len(replay_memories) > memory_size:
