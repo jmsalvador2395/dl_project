@@ -191,10 +191,10 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			s_prime=s_builder.get()
 
 			#append to replay_memories as (s, a, r, s', done)
-			replay_memories.append((torch.tensor(s, dtype=dtype, device=device), 
-									a, 
-									torch.tensor(r, dtype=dtype, device=device), 
-									torch.tensor(s_prime, dtype=dtype, device=device), 
+			replay_memories.append((torch.tensor(s, dtype=dtype, device=device),
+									a,
+									torch.tensor(r, dtype=dtype, device=device),
+									torch.tensor(s_prime, dtype=dtype, device=device),
 									torch.tensor(~done, device=device)))
 
 			#remove oldest sample to maintain memory size
