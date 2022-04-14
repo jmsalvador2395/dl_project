@@ -75,18 +75,12 @@ class dqn(nn.Module):
 		#sample minibatch
 		minibatch=random.sample(memories, batch_size)
 
-		#split tuples into groups and convert to arrays
-		states =		np.array([i[0] for i in minibatch])
-		actions =		np.array([i[1] for i in minibatch])
-		rewards =		np.array([i[2] for i in minibatch])
-		next_states =	np.array([i[3] for i in minibatch])
-		done =		   ~np.array([i[4] for i in minibatch]) #use ~ on done to use in update calculation
-
-		#convert arrays to torch tensors
-		states =		torch.tensor(states, dtype=dt, device=device, requires_grad=True)
-		rewards =		torch.tensor(rewards, dtype=dt, device=device)
-		next_states =	torch.tensor(next_states, dtype=dt, device=device)
-		done =			torch.tensor(done, device=device)
+		#split tuples into groups and convert to tensors
+		states =		torch.stack([i[0] for i in minibatch])
+		actions =		   np.array([i[1] for i in minibatch])
+		rewards =		torch.stack([i[2] for i in minibatch])
+		next_states =	torch.stack([i[3] for i in minibatch])
+		not_done =		torch.stack([i[4] for i in minibatch])
 
 		#create predictions
 		policy_scores=self.forward(states)
@@ -97,7 +91,7 @@ class dqn(nn.Module):
 
 		#create labels
 		y=policy_scores.clone().detach()
-		y[range(batch_size), actions] = rewards + gamma*trgt_qvals*done
+		y[range(batch_size), actions] = rewards + gamma*trgt_qvals*not_done
 
 		#compute loss using Huber Loss
 		loss_fn = nn.SmoothL1Loss()
@@ -200,9 +194,15 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			s_prime=s_builder.get()
 
 			#append to replay_memories as (s, a, r, s', done)
-			replay_memories.append((s.copy(), a, r, s_prime.copy(), done))
+			replay_memories.append((torch.tensor(s), 
+									a, 
+									torch.tensor(r), 
+									torch.tensor(s_prime), 
+									torch.tensor(~done)))
+
+			#remove oldest sample to maintain memory size
 			if len(replay_memories) > memory_size:
-				replay_memories.pop(0)
+				del replay_memories[:1]
 
 			#perform gradient descent step
 			#if len(replay_memories) > batch_size and total_steps % update_steps == 0:
@@ -225,7 +225,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			# save model cheeckpoint every 4000 time steps
 			if total_steps % 4000  == 0:
 				time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
-				fname=model_path + 'dqn_checkpoint_' + time + 'pth'
+				fname=model_path + 'dqn_checkpoint_' + time + '.pth'
 				torch.save(policy_net, fname)
 				print('model checkpoint saved to {}'.format(fname))
 
