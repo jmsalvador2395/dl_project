@@ -52,8 +52,7 @@ class data_point:
 			self.point[self.layer_count]=frame
 			self.layer_count+=1
 	def get(self):
-		#return copy.deepcopy(self.point)
-				return self.point.copy()
+		return self.point.copy()
 	
 	
 class data_collector:
