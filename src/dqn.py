@@ -73,11 +73,11 @@ class dqn(nn.Module):
 		minibatch=random.sample(memories, batch_size)
 
 		#split tuples into groups and convert to tensors
-		states =		torch.stack([i[0] for i in minibatch])
+		states =		torch.stack([i[0] for i in minibatch]).to(device)
 		actions =		   np.array([i[1] for i in minibatch])
-		rewards =		torch.stack([i[2] for i in minibatch])
-		next_states =	torch.stack([i[3] for i in minibatch])
-		not_done =		torch.stack([i[4] for i in minibatch])
+		rewards =		torch.stack([i[2] for i in minibatch]).to(device)
+		next_states =	torch.stack([i[3] for i in minibatch]).to(device)
+		not_done =		torch.stack([i[4] for i in minibatch]).to(device)
 
 		#create predictions
 		policy_scores=self.forward(states)
@@ -191,11 +191,11 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			s_prime=s_builder.get()
 
 			#append to replay_memories as (s, a, r, s', done)
-			replay_memories.append((torch.tensor(s, dtype=dtype, device=device),
+			replay_memories.append((torch.tensor(s, dtype=dtype),
 									a,
-									torch.tensor(r, dtype=dtype, device=device),
-									torch.tensor(s_prime, dtype=dtype, device=device),
-									torch.tensor(~done, device=device)))
+									torch.tensor(r, dtype=dtype),
+									torch.tensor(s_prime, dtype=dtype),
+									torch.tensor(~done)))
 
 			#remove oldest sample to maintain memory size
 			if len(replay_memories) > memory_size:
