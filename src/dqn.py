@@ -69,6 +69,9 @@ class dqn(nn.Module):
 
 	def update_model(self, memories, batch_size, gamma, 
 					 trgt_model, device, optimizer):
+
+		self.train()
+
 		#sample minibatch
 		minibatch=random.sample(memories, batch_size)
 
@@ -99,6 +102,8 @@ class dqn(nn.Module):
 		loss.backward()
 		optimizer.step()
 
+		self.eval()
+
 '''
 local functions
 '''
@@ -112,9 +117,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	episodes=int(episodes)
 	batch_size=int(batch_size)			#minibatch size for training
 	
-	gamma=.999				#gamma for MDP
-	alpha=1e-2				#learning rate
-	k=4						#fram skip number
+	gamma=.99				#gamma for MDP
 
 	#epsilon greedy parameters
 	epsilon=eps_start
@@ -127,10 +130,11 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	total_steps=0			#tracks global time steps
 
 	memory_size=15000		#size of replay memory buffer
+	episode_scores=[]
 
 	
 	#create gym environment
-	env = gym.make('Breakout-v0', obs_type='grayscale', render_mode='human')
+	env = gym.make('BreakoutDeterministic-v4', obs_type='grayscale', render_mode='human')
 
 	#get action space
 	action_map=env.get_keys_to_action()
@@ -148,7 +152,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 		policy_net=dqn()
 
 	policy_net=policy_net.to(device)
-	#policy_net.eval()
+	policy_net.eval()
 
 	#initialize target network
 	trgt_policy_net=dqn().to(device)
@@ -226,8 +230,12 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 				torch.save(policy_net, fname)
 				print('model checkpoint saved to {}'.format(fname))
 
+		episode_scores.append(total_reward)
+		if len(episode_scores) > 20:
+			del episode_scores[:1]
 
-		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}'.format(ep, total_reward, epsilon, total_steps, t))
+
+		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}, avg: {5}'.format(ep, total_reward, epsilon, total_steps, t, np.mean(episode_scores)))
 				
 				
 if __name__ == '__main__':
