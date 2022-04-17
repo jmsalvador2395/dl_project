@@ -122,14 +122,14 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	#epsilon greedy parameters
 	epsilon=eps_start
 	eps_end=.1
-	eps_decay=3e5			#makes it so that decay applies over ~1 million time steps
+	eps_decay=75e3			#makes it so that decay applies over ~1 million time steps
 
-	#update_steps=10			#update policy after every 
-	C=10					#update target model after every C steps
+	update_steps=4			#update policy after every n steps
+	C=1e4					#update target model after every C steps
 	dtype=torch.float32		#dtype for torch tensors
 	total_steps=0			#tracks global time steps
 
-	memory_size=15000		#size of replay memory buffer
+	memory_size=20000		#size of replay memory buffer
 	episode_scores=[]
 
 	
@@ -199,7 +199,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 									a,
 									torch.tensor(r, dtype=dtype),
 									torch.tensor(s_prime, dtype=dtype),
-									torch.tensor(~done)))
+									torch.tensor(not done, dtype=torch.bool)))
 
 			#remove oldest sample to maintain memory size
 			if len(replay_memories) > memory_size:
@@ -207,7 +207,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 
 			#perform gradient descent step
 			#if len(replay_memories) > batch_size and total_steps % update_steps == 0:
-			if len(replay_memories) > batch_size:
+			if len(replay_memories) > batch_size and total_steps%update_steps == 0:
 				policy_net.update_model(replay_memories, batch_size, gamma, 
 										trgt_policy_net, device, optimizer)
 
@@ -231,11 +231,11 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 				print('model checkpoint saved to {}'.format(fname))
 
 		episode_scores.append(total_reward)
-		if len(episode_scores) > 20:
+		if len(episode_scores) > 100:
 			del episode_scores[:1]
 
 
-		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}, avg: {5}'.format(ep, total_reward, epsilon, total_steps, t, np.mean(episode_scores)))
+		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}, avg: {5:.2f}'.format(ep, total_reward, epsilon, total_steps, t, np.mean(episode_scores)))
 				
 				
 if __name__ == '__main__':
