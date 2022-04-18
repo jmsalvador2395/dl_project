@@ -3,6 +3,7 @@
 ROMs/*
 unused/*
 project/*
+src/training_data_reward/*
 *.mdl
 
 # Byte-compiled / optimized / DLL files
