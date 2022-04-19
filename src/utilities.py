@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
 import copy
 import random
+import cv2
 
 
 
@@ -29,28 +30,23 @@ used to stack data before it's appended to the dataset
 class data_point:
 
 	#initialize data point. (4, 210, 160)=4 frames
-	def __init__(self, shape=(4, 210, 160)):
+	def __init__(self, shape=(4, 84, 84)):
 		self.shape=shape
 		self.point=np.zeros(self.shape)
-		self.layer_count=0
 
 		self.buffer=[]
 
 	
-	def ready(self):
-		return self.layer_count==4
-	
-	
 	#adds new frame to the data point. 
 	def add_frame(self, frame):
+		#crop, scale, and then resize frame before adding
+		processed_frame=cv2.resize(frame[34:194]/255,
+								   dsize=(84,84), 
+								   interpolation=cv2.INTER_NEAREST)
 
-		if self.layer_count == 4:
-			#self.point=np.vstack((self.point[1:], np.expand_dims(frame, 0)))
-			self.point[0:3]=self.point[1:4]
-			self.point[3]=frame
-		else:
-			self.point[self.layer_count]=frame
-			self.layer_count+=1
+		self.point[0:3]=self.point[1:4]
+		self.point[3]=processed_frame
+
 	def get(self):
 		return self.point.copy()
 	

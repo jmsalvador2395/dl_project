@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
 from PIL import Image
-from utilities import data_point
+from utilities import data_point, visualize_block
 import math
 import datetime
 import sys
+import os
 
 
 import torch
@@ -19,7 +20,14 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
 
+#create model path
 model_path='../models/'
+if not os.path.exists(model_path):
+	os.makedirs(model_path)
+
+model_path+='dqn/'
+if not os.path.exists(model_path):
+	os.makedirs(model_path)
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.set_default_dtype(torch.float32)
@@ -28,32 +36,35 @@ class dqn(nn.Module):
 	def __init__(self):
 		super(dqn, self).__init__()
 		layer1 = nn.Sequential(
-			nn.Conv2d(4, 16, kernel_size=8, stride=4, padding=(1, 4)),
+			#nn.Conv2d(4, 16, kernel_size=8, stride=4, padding=(1, 4)),
+			nn.Conv2d(4, 16, kernel_size=8, stride=4),
 			nn.BatchNorm2d(16),
 			nn.ReLU(),
 			nn.MaxPool2d(2)
 		)
 
 		layer2 = nn.Sequential(
-			nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=(0, 2)),
+			#nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=(0, 2)),
+			nn.Conv2d(16, 32, kernel_size=4, stride=2),
 			nn.BatchNorm2d(32),
 			nn.ReLU(),
 			nn.MaxPool2d(2)
 		)
 
 		fc1 = nn.Sequential(
-			nn.Linear(32*6*5, 256),
-			nn.LayerNorm(256),
+			#nn.Linear(32*6*5, 512),
+			nn.Linear(32*2*2, 512),
+			nn.LayerNorm(512),
 			nn.ReLU()
 		)
 
 		fc2 = nn.Sequential(
-			nn.Linear(256, 256),
-			nn.LayerNorm(256),
+			nn.Linear(512, 512),
+			nn.LayerNorm(512),
 			nn.ReLU()
 		)
 
-		fc3 = nn.Linear(256, 4)
+		fc3 = nn.Linear(512, 4)
 
 		self.model = nn.Sequential(
 			layer1,
@@ -84,14 +95,16 @@ class dqn(nn.Module):
 
 		#create predictions
 		policy_scores=self.forward(states)
+		policy_scores=policy_scores[range(batch_size), actions]
 
 		#create max(Q vals) from target policy net
 		trgt_policy_scores=trgt_model(next_states)
 		trgt_qvals=trgt_policy_scores.max(1)[0]
 
 		#create labels
-		y=policy_scores.clone().detach()
-		y[range(batch_size), actions] = rewards + gamma*trgt_qvals*not_done
+		#y=policy_scores.clone().detach()
+		#y[range(batch_size), actions] = rewards + gamma*trgt_qvals*not_done
+		y = rewards + gamma*trgt_qvals*not_done
 
 		#compute loss using Huber Loss
 		loss_fn = nn.SmoothL1Loss()
@@ -100,6 +113,8 @@ class dqn(nn.Module):
 		#gradient descent step
 		optimizer.zero_grad()
 		loss.backward()
+		for param in self.parameters():
+			param.grad.data.clamp_(-1, 1)	#gradient clip
 		optimizer.step()
 
 		self.eval()
@@ -111,18 +126,19 @@ local functions
 def epsilon_update(epsilon, eps_start, eps_end, eps_decay, step):
 	return eps_end + (eps_start - eps_end) * math.exp(-1 * step / eps_decay)
 
-def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=32):
+def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=64):
 
 	eps_start=float(eps_start)
 	episodes=int(episodes)
 	batch_size=int(batch_size)			#minibatch size for training
 	
 	gamma=.99				#gamma for MDP
+	alpha=1e-5				#learning rate
 
 	#epsilon greedy parameters
 	epsilon=eps_start
 	eps_end=.1
-	eps_decay=75e3			#makes it so that decay applies over ~1 million time steps
+	eps_decay=75e3
 
 	update_steps=4			#update policy after every n steps
 	C=1e4					#update target model after every C steps
@@ -140,18 +156,14 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	action_map=env.get_keys_to_action()
 	A=env.action_space.n
 
-	#initialize main network
-	policy_net=dqn().to(device)
-	
 	#load pre-trained model if specified
 	if pre_trained_model is not None:
 		policy_net=torch.load(model_path + pre_trained_model,
 									  map_location=torch.device(device))
 		print('loaded pre-trained model')
 	else:
-		policy_net=dqn()
+		policy_net=dqn().to(device)
 
-	policy_net=policy_net.to(device)
 	policy_net.eval()
 
 	#initialize target network
@@ -160,7 +172,8 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 	trgt_policy_net.eval()
 
 	#initialize optimizer
-	optimizer=optim.RMSprop(policy_net.parameters())
+	#optimizer=optim.RMSprop(policy_net.parameters())
+	optimizer=optim.Adam(policy_net.parameters(), lr=alpha)
 
 	#initialize some variables before getting into the main loop
 	replay_memories=[]
@@ -176,6 +189,7 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 
 		t=1									#episodic t
 		done=False							#tracks when episodes end
+		lives=5
 		while not done:
 			
 			#select action using epsilon greedy policy
@@ -194,20 +208,26 @@ def main(arg0, pre_trained_model=None, eps_start=.9, episodes=20000, batch_size=
 			s_builder.add_frame(s_prime_frame)
 			s_prime=s_builder.get()
 
+			#use to feed lost life as an end state
+			res=done
+			if lives != info['lives']:
+				res=True
+				lives=info['lives']
+
 			#append to replay_memories as (s, a, r, s', done)
-			replay_memories.append((torch.tensor(s, dtype=dtype),
+			replay_memories.append((torch.tensor(s,		  dtype=dtype),
 									a,
-									torch.tensor(r, dtype=dtype),
+									torch.tensor(r, 	  dtype=dtype),
 									torch.tensor(s_prime, dtype=dtype),
-									torch.tensor(not done, dtype=torch.bool)))
+									torch.tensor(not res, dtype=torch.bool)))
 
 			#remove oldest sample to maintain memory size
 			if len(replay_memories) > memory_size:
 				del replay_memories[:1]
 
 			#perform gradient descent step
-			#if len(replay_memories) > batch_size and total_steps % update_steps == 0:
-			if len(replay_memories) > batch_size and total_steps%update_steps == 0:
+			if len(replay_memories) > batch_size and total_steps % update_steps == 0:
+			#if len(replay_memories) > batch_size:
 				policy_net.update_model(replay_memories, batch_size, gamma, 
 										trgt_policy_net, device, optimizer)
 
