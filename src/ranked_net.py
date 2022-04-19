@@ -76,10 +76,10 @@ def train_reward(reward_network, optimizer, training_inputs, training_outputs, n
     best_v_accuracy = -np.float('inf')
     early_stop = False
     print('num_iter: {}, len(data): {}'.format(num_iter, len(training_dataset)))
-    for epoch in range(math.floor(num_iter/len(training_dataset))):
+    for epoch in range(num_iter):
         np.random.shuffle(training_dataset)
         training_obs, training_labels = zip(*training_dataset)
-        print( len(training_labels))
+        
         
         for i in range(len(training_labels)):
             
@@ -152,7 +152,7 @@ if __name__ == '__main__':
     reward_net.to(device)
     lr=1e-4
     weight_decay= 0
-    num_iter = 10000 
+    num_iter = 10
     l1_reg=0
     
     optimizer = optim.Adam(reward_net.parameters(),  lr=lr, weight_decay=weight_decay)

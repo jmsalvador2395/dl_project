@@ -24,7 +24,7 @@ class ranked_traj:
         env.reset()
         rewards= []
         traj= []
-        for i in range(1):
+        for i in range(20):
             done = False
             pt=data_point()
             pt.add_frame(env.reset())
@@ -89,7 +89,10 @@ def training_data_for_reward(ranked_demos, num_snippets, min_snippet_length, max
        
        
         min_length = min(len(ti), len(tj))
-        rand_length = np.random.randint(min_snippet_length, max_snippet_length)
+        if min_length<min_snippet_length:
+            continue
+        rand_length = np.random.randint(min_snippet_length, min(min_length,max_snippet_length))
+        
         if bi < bj: 
             ti_start = np.random.randint(min_length - rand_length + 1)
             tj_start = np.random.randint(ti_start, len(tj) - rand_length + 1)
@@ -108,7 +111,7 @@ def training_data_for_reward(ranked_demos, num_snippets, min_snippet_length, max
         training_x.append((snip_i, snip_j))
         #training_x.append(np.array([snip_i.numpy(), snip_j.numpy()]))
         training_y.append(label)
-        print(training_x[0][0][0].shape)
+        
 
     print("this is",len(training_x[0]))
     return training_x, training_y   
@@ -117,9 +120,9 @@ def training_data_for_reward(ranked_demos, num_snippets, min_snippet_length, max
 
       
 if __name__ == '__main__':
-    epsilon_val=[1]
-    num_snippets = 400
-    min_snippet_length = 50
+    epsilon_val=[1.0,0.67,0.37,0.01]
+    num_snippets = 4000
+    min_snippet_length = 10
     max_snippet_length = 100
     ranked_trajectories=[]
     ranked_demos=[]
@@ -142,7 +145,7 @@ if __name__ == '__main__':
         ranked_trajectories.append(r)
     
     training_x,training_y = training_data_for_reward(ranked_trajectories, num_snippets, min_snippet_length, max_snippet_length)
-    print(type(training_x[0][0][0]))
+    #print(type(training_x[0][0][0]))
     with open("training_data_reward.pickle", 'wb') as fh:
         pickle.dump((training_x,training_y), fh)
         
