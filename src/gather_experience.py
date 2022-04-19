@@ -27,7 +27,7 @@ if __name__ == '__main__':
 	fname=data_dir+'demonstrator_{}.pickle'.format(time)
 
 	#create gym environment and collect data
-	play(env = gym.make('Breakout-v0', obs_type='grayscale'), zoom=4, callback=collector.callback, keys_to_action=action_map)
+	play(env = gym.make('BreakoutDeterministic-v4', obs_type='grayscale'), zoom=4, callback=collector.callback, keys_to_action=action_map)
 
 	#create folder for data
 	if not os.path.isdir(data_dir): 

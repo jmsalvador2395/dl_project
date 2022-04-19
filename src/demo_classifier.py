@@ -36,22 +36,27 @@ class Demo_Classifier:
 		
 	def cnn_model(self):
 		layer1 = nn.Sequential(
-			nn.Conv2d(4, 16, kernel_size=8, stride=4, padding=(1, 4)),
+			nn.Conv2d(4, 16, kernel_size=8, stride=4),
 			nn.BatchNorm2d(16),
 			nn.ReLU(),
 			nn.MaxPool2d(2)
 		)
 
 		layer2 = nn.Sequential(
-			nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=(0, 2)),
+			nn.Conv2d(16, 32, kernel_size=4, stride=2),
 			nn.BatchNorm2d(32),
 			nn.ReLU(),
 			nn.MaxPool2d(2)
 		)
 
 
-		fc1 = nn.Linear(32*6*5, 256)
-		fc2 = nn.Linear(256, 4)
+		fc1 = nn.Sequential(
+			nn.Linear(32*2*2, 512),
+			nn.LayerNorm(512),
+			nn.ReLU()
+		)
+
+		fc2 = nn.Linear(512, 4)
 
 		model = nn.Sequential(
 			layer1,
