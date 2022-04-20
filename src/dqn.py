@@ -58,13 +58,40 @@ class dqn(nn.Module):
 			nn.ReLU()
 		)
 
+		"""
 		fc2 = nn.Sequential(
 			nn.Linear(512, 512),
 			nn.LayerNorm(512),
 			nn.ReLU()
 		)
+		"""
 
-		fc3 = nn.Linear(512, 4)
+		fc2 = nn.Linear(512, 4)
+
+
+		#initialize weights
+		nn.init.kaiming_normal_(layer1[0].weight,
+								mode='fan_in',
+								nonlinearity='relu')
+
+		nn.init.kaiming_normal_(layer2[0].weight,
+								mode='fan_in',
+								nonlinearity='relu')
+
+		nn.init.kaiming_normal_(fc1[0].weight,
+								mode='fan_in',
+								nonlinearity='relu')
+
+		"""
+		nn.init.kaiming_normal_(fc2[0].weight,
+								mode='fan_in',
+								nonlinearity='relu')
+		"""
+		
+		nn.init.kaiming_normal_(fc2.weight,
+								mode='fan_in',
+								nonlinearity='relu')
+
 
 		self.model = nn.Sequential(
 			layer1,
@@ -72,7 +99,7 @@ class dqn(nn.Module):
 			nn.Flatten(),
 			fc1,
 			fc2,
-			fc3
+			#fc3
 		)
 
 	def forward(self, x):
@@ -126,26 +153,35 @@ local functions
 def epsilon_update(epsilon, eps_start, eps_end, eps_decay, step):
 	return eps_end + (eps_start - eps_end) * math.exp(-1 * step / eps_decay)
 
-def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=64):
+def clip_r(r):
+	if r > 0:
+		return 1
+	elif r == 0:
+		return 0
+	else:
+		return -1
+
+def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=32):
 
 	eps_start=float(eps_start)
 	episodes=int(episodes)
 	batch_size=int(batch_size)			#minibatch size for training
 	
 	gamma=.99				#gamma for MDP
-	alpha=1e-5				#learning rate
+	alpha=6.25e-5			#learning rate
 
 	#epsilon greedy parameters
 	epsilon=eps_start
 	eps_end=.1
-	eps_decay=75e3
+	#eps_decay=75e3
+	eps_decay=1e5
 
 	update_steps=4			#update policy after every n steps
-	C=1e4					#update target model after every C steps
+	C=10000					#update target model after every C steps
 	dtype=torch.float32		#dtype for torch tensors
 	total_steps=0			#tracks global time steps
 
-	memory_size=20000		#size of replay memory buffer
+	memory_size=30000		#size of replay memory buffer
 	episode_scores=[]
 
 	
@@ -210,16 +246,17 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 
 			#use to feed lost life as an end state
 			res=done
+			aux_r=0
 			if lives != info['lives']:
 				res=True
 				lives=info['lives']
 
 			#append to replay_memories as (s, a, r, s', done)
-			replay_memories.append((torch.tensor(s,		  dtype=dtype),
+			replay_memories.append((torch.tensor(s,			dtype=dtype),
 									a,
-									torch.tensor(r, 	  dtype=dtype),
-									torch.tensor(s_prime, dtype=dtype),
-									torch.tensor(not res, dtype=torch.bool)))
+									torch.tensor(clip_r(r),	dtype=dtype),
+									torch.tensor(s_prime,	dtype=dtype),
+									torch.tensor(not res,	dtype=torch.bool)))
 
 			#remove oldest sample to maintain memory size
 			if len(replay_memories) > memory_size:
@@ -227,7 +264,6 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 
 			#perform gradient descent step
 			if len(replay_memories) > batch_size and total_steps % update_steps == 0:
-			#if len(replay_memories) > batch_size:
 				policy_net.update_model(replay_memories, batch_size, gamma, 
 										trgt_policy_net, device, optimizer)
 
@@ -243,15 +279,15 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 			#update state
 			s=s_prime
 
-			# save model cheeckpoint every 4000 time steps
-			if total_steps % 4000  == 0:
+			# save model cheeckpoint every 10000 time steps
+			if total_steps % 10000  == 0:
 				time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
 				fname=model_path + 'dqn_checkpoint_' + time + '.pth'
 				torch.save(policy_net, fname)
 				print('model checkpoint saved to {}'.format(fname))
 
 		episode_scores.append(total_reward)
-		if len(episode_scores) > 100:
+		if len(episode_scores) > 500:
 			del episode_scores[:1]
 
 
