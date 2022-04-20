@@ -173,7 +173,7 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 	epsilon=eps_start
 	eps_end=.1
 	#eps_decay=75e3
-	eps_decay=2e5
+	eps_decay=3e5
 
 	update_steps=4			#update policy after every n steps
 	C=10000					#update target model after every C steps
@@ -243,6 +243,8 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 			s_builder.add_frame(s_prime_frame)
 			s_prime=s_builder.get()
 
+			r=clip_r(r)
+
 			#use to feed lost life as an end state
 			res=done
 			aux_r=0
@@ -253,7 +255,7 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 			#append to replay_memories as (s, a, r, s', done)
 			replay_memories.append((torch.tensor(s,			dtype=dtype),
 									a,
-									torch.tensor(clip_r(r),	dtype=dtype),
+									torch.tensor(r,			dtype=dtype),
 									torch.tensor(s_prime,	dtype=dtype),
 									torch.tensor(not res,	dtype=torch.bool)))
 
