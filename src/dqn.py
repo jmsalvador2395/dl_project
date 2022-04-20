@@ -140,8 +140,7 @@ class dqn(nn.Module):
 		#gradient descent step
 		optimizer.zero_grad()
 		loss.backward()
-		for param in self.parameters():
-			param.grad.data.clamp_(-1, 1)	#gradient clip
+		torch.nn.utils.clip_grad_norm_(self.parameters(), 1)
 		optimizer.step()
 
 		self.eval()
@@ -174,7 +173,7 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 	epsilon=eps_start
 	eps_end=.1
 	#eps_decay=75e3
-	eps_decay=1e5
+	eps_decay=2e5
 
 	update_steps=4			#update policy after every n steps
 	C=10000					#update target model after every C steps
