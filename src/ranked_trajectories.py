@@ -17,7 +17,10 @@ class ranked_traj:
             print('using CPU')
             device='cpu'
             dtype = torch.float32
-        model= torch.load("bc_model.h5")
+            
+        data_dir = '../models/bc/'
+        fname= fname+data_dir+'bc_model.h5'
+        model= torch.load(fname)
         model.eval()
         pt= data_point() 
         env = gym.make('BreakoutDeterministic-v4', obs_type='grayscale', render_mode='human')
@@ -120,6 +123,10 @@ def training_data_for_reward(ranked_demos, num_snippets, min_snippet_length, max
 
       
 if __name__ == '__main__':
+    data_dir = '../data/ranked_demos'
+    if not os.path.isdir(data_dir): 
+        os.mkdir(data_dir)
+    fname=fname+data_dir+'training_data_reward.pickle'
     epsilon_val=[1.0,0.67,0.37,0.01]
     num_snippets = 4000
     min_snippet_length = 10
@@ -146,7 +153,7 @@ if __name__ == '__main__':
     
     training_x,training_y = training_data_for_reward(ranked_trajectories, num_snippets, min_snippet_length, max_snippet_length)
     #cprint(type(training_x[0][0][0]))
-    with open("training_data_reward.pickle", 'wb') as fh:
+    with open(fname, 'wb') as fh:
         pickle.dump((training_x,training_y), fh)
         
             

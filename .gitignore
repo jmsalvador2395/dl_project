@@ -1,9 +1,9 @@
-<<<<<<< HEAD
+
 # Project-specific Files
 ROMs/*
 unused/*
 project/*
-src/training_data_reward/*
+data/*
 *.mdl
 
 # Byte-compiled / optimized / DLL files

@@ -61,7 +61,10 @@ class Net(nn.Module):
 
 
 def train_reward(reward_network, optimizer, training_inputs, training_outputs, num_iter, l1_reg):
-
+    data_dir = '../models/reward_net/'
+    if not os.path.isdir(data_dir): 
+        os.mkdir(data_dir)
+    fname=fname+data_dir+'reward_net_best.h5'
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     loss_criterion = nn.CrossEntropyLoss()
@@ -114,7 +117,7 @@ def train_reward(reward_network, optimizer, training_inputs, training_outputs, n
                 print("Validation accuracy = {}".format(v_accuracy))
                 if v_accuracy > best_v_accuracy:
                     print("check pointing")
-                    torch.save(reward_net,"reward_net_best.h5")
+                    torch.save(reward_net,fname)
                     best_v_accuracy = v_accuracy
                 
                 print(abs_rewards)
@@ -151,7 +154,16 @@ def calc_accuracy(reward_network, training_inputs, training_outputs):
 
 if __name__ == '__main__':
     
-    data_set=pickle.load(open("training_data_reward.pickle", 'rb'))
+    data_dir = '../models/reward_net/'
+    if not os.path.isdir(data_dir): 
+        os.mkdir(data_dir)
+    fname=fname+data_dir+'reward_net.h5'
+    
+    data_dir1 = '../data/ranked_demos'
+    
+    fname1=fname1+data_dir1+'training_data_reward.pickle'
+    
+    data_set=pickle.load(open(fname1, 'rb'))
     training_x = data_set[0]
     training_y = data_set[1]
             
@@ -168,4 +180,4 @@ if __name__ == '__main__':
     train_reward(reward_net, optimizer, training_x, training_y, num_iter, l1_reg)
     
     print("accuracy", calc_accuracy(reward_net, training_x, training_y))
-    torch.save(reward_net, "reward_net.h5")
+    torch.save(reward_net, fname)

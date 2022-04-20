@@ -165,7 +165,7 @@ class Demo_Classifier:
 			
 	
 if __name__ == '__main__':
-	data_dir = 'models/bc/'
+	data_dir = '../models/bc/'
 	if not os.path.isdir(data_dir): 
 		os.mkdir(data_dir)
 	fname= fname+data_dir+'bc_model.h5'
