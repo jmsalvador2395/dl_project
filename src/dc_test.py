@@ -16,7 +16,7 @@ if __name__ == '__main__':
 	model= torch.load("bc_model.h5")
 	model.eval()
 	pt= data_point() 
-	env = gym.make('Breakout-v0', obs_type='grayscale', render_mode='human')
+	env = gym.make('BreakoutDeterministic-v4', obs_type='grayscale', render_mode='human')
 	env.reset()
 	#print(env.action_space)
 	#observation,reward,done,info = env.step(Action.FIRE)

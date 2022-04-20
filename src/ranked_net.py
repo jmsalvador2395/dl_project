@@ -24,11 +24,11 @@ class Net(nn.Module):
         self.conv2 = nn.Conv2d(32, 16, 5, stride=2)
         self.conv3 = nn.Conv2d(16, 16, 3, stride=1)
         self.conv4 = nn.Conv2d(16, 16, 3, stride=1)
-        #self.fc1 = nn.Linear(784, 64)
-        #self.fc2 = nn.Linear(64, 1)
-        self.fc1 = nn.Linear(16*28*20,256)
-        self.fc2 = nn.Linear(256,64)
-        self.fc3 = nn.Linear(64,1)
+        self.fc1 = nn.Linear(784, 64)
+        self.fc2 = nn.Linear(64, 1)
+        #self.fc1 = nn.Linear(16*7*7,256)
+        #self.fc2 = nn.Linear(256,64)
+        #self.fc3 = nn.Linear(64,1)
 
 
 
@@ -41,10 +41,10 @@ class Net(nn.Module):
         x = F.leaky_relu(self.conv2(x))
         x = F.leaky_relu(self.conv3(x))
         x = F.leaky_relu(self.conv4(x))
-        x = x.view(-1, 16*28*20)
+        x = x.view(-1, 784)
         x = F.leaky_relu(self.fc1(x))
-        x= F.leaky_relu(self.fc2(x))
-        r = self.fc3(x)
+        #x= F.leaky_relu(self.fc2(x))
+        r = self.fc2(x)
         sum_rewards += torch.sum(r)
         sum_abs_rewards += torch.sum(torch.abs(r))
         return sum_rewards, sum_abs_rewards
@@ -75,6 +75,7 @@ def train_reward(reward_network, optimizer, training_inputs, training_outputs, n
 
     best_v_accuracy = -np.float('inf')
     early_stop = False
+    validation_accuracy=[]
     print('num_iter: {}, len(data): {}'.format(num_iter, len(training_dataset)))
     for epoch in range(num_iter):
         np.random.shuffle(training_dataset)
@@ -105,20 +106,28 @@ def train_reward(reward_network, optimizer, training_inputs, training_outputs, n
             optimizer.step()
             item_loss = loss.item()
             cum_loss += item_loss
-            if i % 100 == 99:
+            if i % 300 == 299:
                 print("epoch {}:{} loss {}".format(epoch,i, cum_loss))
                 validation_obs, validation_labels = zip(*validation_dataset)
                 v_accuracy = calc_accuracy(reward_net, validation_obs, validation_labels)
+                validation_accuracy.append(v_accuracy)
                 print("Validation accuracy = {}".format(v_accuracy))
                 if v_accuracy > best_v_accuracy:
                     print("check pointing")
-                    torch.save(reward_net,"reward_net.h5")
+                    torch.save(reward_net,"reward_net_best.h5")
                     best_v_accuracy = v_accuracy
                 
                 print(abs_rewards)
                 cum_loss = 0.0
         
-        
+    rng=range(0, 100*len(validation_accuracy), 100)
+    plt.plot(rng,validation_accuracy)   
+    plt.xlabel('Accuracy for every 1000 iterations')
+    plt.ylabel('Accuracy')
+    plt.title('Behavior Cloning Training')
+
+    plt.show()
+    
 
 def calc_accuracy(reward_network, training_inputs, training_outputs):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -150,7 +159,7 @@ if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     reward_net = Net()
     reward_net.to(device)
-    lr=1e-4
+    lr=1e-5
     weight_decay= 0
     num_iter = 10
     l1_reg=0

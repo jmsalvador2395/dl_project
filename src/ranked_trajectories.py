@@ -20,11 +20,11 @@ class ranked_traj:
         model= torch.load("bc_model.h5")
         model.eval()
         pt= data_point() 
-        env = gym.make('Breakout-v0', obs_type='grayscale', render_mode='human')
+        env = gym.make('BreakoutDeterministic-v4', obs_type='grayscale', render_mode='human')
         env.reset()
         rewards= []
         traj= []
-        for i in range(20):
+        for i in range(30):
             done = False
             pt=data_point()
             pt.add_frame(env.reset())
@@ -54,7 +54,7 @@ class ranked_traj:
                     env.step(Action.FIRE)
                     lives=lives-1
                 print(info["lives"])
-                print(new_state.shape)
+                
                 pt.add_frame(new_state)
             traj.append(states)    
          
@@ -89,7 +89,7 @@ def training_data_for_reward(ranked_demos, num_snippets, min_snippet_length, max
        
        
         min_length = min(len(ti), len(tj))
-        if min_length<min_snippet_length:
+        if min_length<min_snippet_length or min_length == 0:
             continue
         rand_length = np.random.randint(min_snippet_length, min(min_length,max_snippet_length))
         
@@ -145,7 +145,7 @@ if __name__ == '__main__':
         ranked_trajectories.append(r)
     
     training_x,training_y = training_data_for_reward(ranked_trajectories, num_snippets, min_snippet_length, max_snippet_length)
-    #print(type(training_x[0][0][0]))
+    #cprint(type(training_x[0][0][0]))
     with open("training_data_reward.pickle", 'wb') as fh:
         pickle.dump((training_x,training_y), fh)
         

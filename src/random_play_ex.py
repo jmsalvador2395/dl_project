@@ -5,7 +5,7 @@ from gym.utils.play import *
 if __name__ == '__main__':
 
 	done=False
-	env = gym.make('Breakout-v0', obs_type='grayscale', render_mode='human')
+	env = gym.make('BreakoutDeterministic-v4', obs_type='grayscale', render_mode='human')
 	state=env.reset()
 	s_prime=state
 
