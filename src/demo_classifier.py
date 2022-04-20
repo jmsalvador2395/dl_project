@@ -13,6 +13,8 @@ import gym
 
 num_classes=4
 
+
+
 class Demo_Classifier:
 	batch_size=4000
 	if torch.cuda.is_available():
@@ -163,10 +165,14 @@ class Demo_Classifier:
 			
 	
 if __name__ == '__main__':
+	data_dir = 'models/bc/'
+	if not os.path.isdir(data_dir): 
+		os.mkdir(data_dir)
+	fname= fname+data_dir+'bc_model.h5'
 	loader_train_set,loader_test_set = Demo_Classifier().preprocessing()   
 	model = Demo_Classifier().cnn_model()
 	model_aftertrain=Demo_Classifier().train_part(model,loader_train_set, loader_test_set)
-	torch.save(model_aftertrain, "bc_model.h5")
+	torch.save(model_aftertrain, fname)
 	
 	
 	
