@@ -351,7 +351,6 @@ def main(pre_trained_model=None, eps_start=1., episodes=20000,
 			del reward_hist['clip'][:1]
 			if reward_net is not None:
 				del reward_hist['rhat'][:1]
-		print(reward_hist)
 				
 		#append rewards
 		reward_hist['true'].append(true_reward)
