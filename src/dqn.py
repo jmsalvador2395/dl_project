@@ -12,6 +12,8 @@ import math
 import datetime
 import sys
 import os
+from ranked_net import Net
+import pickle
 
 
 import torch
@@ -19,15 +21,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torchvision.transforms as T
-
-#create model path
-model_path='../models/'
-if not os.path.exists(model_path):
-	os.makedirs(model_path)
-
-model_path+='dqn/'
-if not os.path.exists(model_path):
-	os.makedirs(model_path)
 
 device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.set_default_dtype(torch.float32)
@@ -81,13 +74,7 @@ class dqn(nn.Module):
 		nn.init.kaiming_normal_(fc1[0].weight,
 								mode='fan_in',
 								nonlinearity='relu')
-
-		"""
-		nn.init.kaiming_normal_(fc2[0].weight,
-								mode='fan_in',
-								nonlinearity='relu')
-		"""
-		
+	
 		nn.init.kaiming_normal_(fc2.weight,
 								mode='fan_in',
 								nonlinearity='relu')
@@ -98,8 +85,7 @@ class dqn(nn.Module):
 			layer2,
 			nn.Flatten(),
 			fc1,
-			fc2,
-			#fc3
+			fc2
 		)
 
 	def forward(self, x):
@@ -137,6 +123,8 @@ class dqn(nn.Module):
 		loss_fn = nn.SmoothL1Loss()
 		loss=loss_fn(policy_scores, y)
 
+		print(loss)
+
 		#gradient descent step
 		optimizer.zero_grad()
 		loss.backward()
@@ -154,18 +142,46 @@ def epsilon_update(epsilon, eps_start, eps_end, eps_decay, step):
 
 def clip_r(r):
 	if r > 0:
-		return 1
+		return 1.
 	elif r == 0:
-		return 0
+		return 0.
 	else:
-		return -1
+		return -1.
 
-def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=32):
-
-	eps_start=float(eps_start)
-	episodes=int(episodes)
-	batch_size=int(batch_size)			#minibatch size for training
+def main(pre_trained_model=None, eps_start=1., episodes=20000, 
+		 batch_size=32, reward_model=None, session_num=0):
 	
+	##############################creat paths##############################
+
+	#create model path
+	ptm_path='../models/dqn/'
+	if not os.path.exists(ptm_path):
+		os.makedirs(ptm_path)
+	
+	session_id=0
+	metric_path='../metric_data/'
+
+	#create path for metrics
+	session_dir=metric_path+'session_' + str(session_num) + '/'
+	if not os.path.exists(metric_path + 'session_' + str(session_id)):
+		os.makedirs(session_dir)
+	
+	#####################environment initilization#####################
+
+	#load in reward network if specified
+	reward_net=None
+	if reward_model is not None:
+		reward_net_path='../models/reward_net/'
+		if not os.path.exists(reward_net_path + reward_model):
+			print('invalid reward file name')
+		else:
+			reward_net=torch.load(reward_net_path + reward_model,
+								  map_location=torch.device(device))
+			reward_net.eval()
+			print('loaded reward network')
+
+	
+
 	gamma=.99				#gamma for MDP
 	alpha=6.25e-5			#learning rate
 
@@ -173,7 +189,7 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 	epsilon=eps_start
 	eps_end=.1
 	#eps_decay=75e3
-	eps_decay=3e5
+	eps_decay=2e5
 
 	update_steps=4			#update policy after every n steps
 	C=10000					#update target model after every C steps
@@ -190,12 +206,14 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 	#get action space
 	action_map=env.get_keys_to_action()
 	A=env.action_space.n
-
+	
+	suffix='_vanilla'
 	#load pre-trained model if specified
 	if pre_trained_model is not None:
-		policy_net=torch.load(model_path + pre_trained_model,
-									  map_location=torch.device(device))
+		policy_net=torch.load(ptm_path + pre_trained_model,
+							  map_location=torch.device(device))
 		print('loaded pre-trained model')
+		suffix='_trex'
 	else:
 		policy_net=dqn().to(device)
 
@@ -207,16 +225,31 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 	trgt_policy_net.eval()
 
 	#initialize optimizer
-	#optimizer=optim.RMSprop(policy_net.parameters())
 	optimizer=optim.Adam(policy_net.parameters(), lr=alpha)
 
 	#initialize some variables before getting into the main loop
 	replay_memories=[]
+
+	#keeps track of last 500 episodic rewards
+	reward_hist =	{'true':[],
+					 'clip':[],
+					 'rhat':[]}
+
+	#keeps track of average rewards per 500 episodes
+	reward_avgs =	{'true':[],
+					 'clip':[],
+					 'rhat':[]}
+
 	steps_done=0
+
+	################################training loop################################
 
 	for ep in range(episodes):
 		total_reward=0
 
+		true_reward=0
+		clip_reward=0
+		rhat_reward=0
 		s_builder=data_point()				#initialize phi transformation function
 		s_builder.add_frame(env.reset())	
 
@@ -242,12 +275,24 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 			s_prime_frame, r, done, info = env.step(a) 
 			s_builder.add_frame(s_prime_frame)
 			s_prime=s_builder.get()
+			
+			#process reward and increment reward counters
+			true_reward+=r
+			clip_reward+=clip_r(r)
 
-			r=clip_r(r)
+			#use either reward net or clipping for dqn training
+			if reward_net is not None:
+				with torch.no_grad():
+					_, r=reward_net.cum_return(torch.tensor(s_prime[np.newaxis],
+											   dtype=dtype, 
+											   device=device))
+				r=float(r)
+				rhat_reward+=r
+			else:
+				r=clip_r(r)
 
 			#use to feed lost life as an end state
 			res=done
-			aux_r=0
 			if lives != info['lives']:
 				res=True
 				lives=info['lives']
@@ -280,22 +325,96 @@ def main(arg0, pre_trained_model=None, eps_start=1., episodes=20000, batch_size=
 			#update state
 			s=s_prime
 
-			# save model cheeckpoint every 10000 time steps
-			if total_steps % 10000  == 0:
-				time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
-				fname=model_path + 'dqn_checkpoint_' + time + '.pth'
-				torch.save(policy_net, fname)
-				print('model checkpoint saved to {}'.format(fname))
+		# save model cheeckpoint every 200 episodes
+		if ep % 200  == 0:
+			time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
+			fname=ptm_path + 'dqn_checkpoint_' + time + suffix + '.pth'
+			torch.save(policy_net, fname)
+			print('model checkpoint saved to {}'.format(fname))
 
-		episode_scores.append(total_reward)
-		if len(episode_scores) > 500:
-			del episode_scores[:1]
+		#save data to session directory every 500 episodes
+		if ep > 0 and ep % 500 == 0:
+			#append averages
+			reward_avgs['true'].append(np.mean(reward_hist['true']))
+			reward_avgs['clip'].append(np.mean(reward_hist['clip']))
+			if reward_net is not None:
+				reward_avgs['rhat'].append(np.mean(reward_hist['rhat']))
+			
+			#save to pickle file
+			with open(session_dir + 'dqn_rewards.pickle', 'wb') as fh:
+				pickle.dump(reward_avgs, fh)
+			print('saved session data to {}'.format(session_dir + 'dqn_rewards.pickle'))
 
+		#maintain history sizes
+		if ep >= 500:
+			del reward_hist['true'][:1]
+			del reward_hist['clip'][:1]
+			if reward_net is not None:
+				del reward_hist['rhat'][:1]
+		print(reward_hist)
+				
+		#append rewards
+		reward_hist['true'].append(true_reward)
+		reward_hist['clip'].append(clip_reward)
+		if reward_net is not None:
+			reward_hist['rhat'].append(rhat_reward)
 
-		print('episode: {0}, reward: {1}, epsilon: {2:.2f}, total_time: {3}, ep_length: {4}, avg: {5:.2f}'.format(ep, total_reward, epsilon, total_steps, t, np.mean(episode_scores)))
+		#print metrics
+		print('--------------------------------')
+		print(('episode: {0}\n' +
+			   'episode length: {1}\n' + 
+			   'epsilon: {2:.2f}\n' +
+			   'total time: {3}\n' +
+			   'true reward: {4:.2f} ({5} game avg: {6:.2f})\n' +
+			   'blocks hit: {7:.2f} ({8} game avg: {9:.2f})').format(
+			   								ep, 
+											t, 
+											epsilon, 
+											total_steps, 
+											true_reward,
+											len(reward_hist['true']),
+											np.mean(reward_hist['true']),
+											clip_reward,
+											len(reward_hist['clip']),
+											np.mean(reward_hist['clip'])))
+
+		if reward_net is not None:
+			print('rhat: {0:.2f} (avg: {1:.2f})'.format(rhat_reward, 
+														np.mean(reward_hist['rhat'])))
+		print('--------------------------------')
 				
 				
 if __name__ == '__main__':
-	main(*sys.argv)
+	
+	#parse arguments
+	parser=argparse.ArgumentParser(description='trains a model using deep q learning')
+	parser.add_argument('--ptm', metavar='ptm', type=str,
+						default=None, help='name of the pre-trained model')
+
+	parser.add_argument('--eps_start', metavar='e', type=float,
+						default=1., help='starting epsilon value (default 1)')
+
+	parser.add_argument('--episodes', metavar='eps', type=int,
+						default=20000, help='number of episodes to train for (default 20000)')
+
+	parser.add_argument('--batch_size', metavar='bs', type=int,
+						default=20000, help='training batch size (default 32)')
+
+	parser.add_argument('--reward_model', metavar='rm', type=str,
+						default=None, help='name of the reward network')
+
+	parser.add_argument('--session_num', metavar='sn', type=int,
+						default=0, help='manual session id for storing metric data')
+
+	args=parser.parse_args()
+
+	#run main function
+	main(pre_trained_model =	args.ptm,
+		 eps_start =			args.eps_start,
+		 episodes =				args.episodes,
+		 batch_size =			args.batch_size,
+		 reward_model =			args.reward_model,
+		 session_num =			args.session_num,
+	)
 
 
