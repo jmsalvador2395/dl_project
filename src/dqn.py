@@ -51,14 +51,6 @@ class dqn(nn.Module):
 			nn.ReLU()
 		)
 
-		"""
-		fc2 = nn.Sequential(
-			nn.Linear(512, 512),
-			nn.LayerNorm(512),
-			nn.ReLU()
-		)
-		"""
-
 		fc2 = nn.Linear(512, 4)
 
 
@@ -122,8 +114,6 @@ class dqn(nn.Module):
 		#compute loss using Huber Loss
 		loss_fn = nn.SmoothL1Loss()
 		loss=loss_fn(policy_scores, y)
-
-		print(loss)
 
 		#gradient descent step
 		optimizer.zero_grad()
@@ -397,7 +387,7 @@ if __name__ == '__main__':
 						default=20000, help='number of episodes to train for (default 20000)')
 
 	parser.add_argument('--batch_size', metavar='bs', type=int,
-						default=20000, help='training batch size (default 32)')
+						default=32, help='training batch size (default 32)')
 
 	parser.add_argument('--reward_model', metavar='rm', type=str,
 						default=None, help='name of the reward network')
