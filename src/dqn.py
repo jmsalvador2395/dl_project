@@ -153,21 +153,24 @@ def main(pre_trained_model=None, eps_start=1., episodes=20000,
 
 	#create path for metrics
 	session_dir=metric_path+'session_' + str(session_num) + '/'
-	if not os.path.exists(metric_path + 'session_' + str(session_id)):
+	if not os.path.exists(session_dir):
 		os.makedirs(session_dir)
 	
 	#####################environment initilization#####################
 
 	#load in reward network if specified
+	suffix='_vanilla'
 	reward_net=None
 	if reward_model is not None:
 		reward_net_path='../models/reward_net/'
 		if not os.path.exists(reward_net_path + reward_model):
 			print('invalid reward file name')
+			return
 		else:
 			reward_net=torch.load(reward_net_path + reward_model,
 								  map_location=torch.device(device))
 			reward_net.eval()
+			suffix='_trex'
 			print('loaded reward network')
 
 	
@@ -197,13 +200,11 @@ def main(pre_trained_model=None, eps_start=1., episodes=20000,
 	action_map=env.get_keys_to_action()
 	A=env.action_space.n
 	
-	suffix='_vanilla'
 	#load pre-trained model if specified
 	if pre_trained_model is not None:
 		policy_net=torch.load(ptm_path + pre_trained_model,
 							  map_location=torch.device(device))
 		print('loaded pre-trained model')
-		suffix='_trex'
 	else:
 		policy_net=dqn().to(device)
 
@@ -276,7 +277,8 @@ def main(pre_trained_model=None, eps_start=1., episodes=20000,
 					_, r=reward_net.cum_return(torch.tensor(s_prime[np.newaxis],
 											   dtype=dtype, 
 											   device=device))
-				r=float(r)
+				#scale reward using sigmoid
+				r=1/(1+np.exp(-float(r)))
 				rhat_reward+=r
 			else:
 				r=clip_r(r)
@@ -315,7 +317,7 @@ def main(pre_trained_model=None, eps_start=1., episodes=20000,
 			#update state
 			s=s_prime
 
-		# save model cheeckpoint every 200 episodes
+		# save model checkpoint every 200 episodes
 		if ep % 200  == 0:
 			time=datetime.datetime.now().strftime("%Y_%m_%d_%H%M%S")
 			fname=ptm_path + 'dqn_checkpoint_' + time + suffix + '.pth'
