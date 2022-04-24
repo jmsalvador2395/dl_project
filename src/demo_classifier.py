@@ -27,7 +27,7 @@ class Demo_Classifier:
 	def preprocessing(self):
 		#transform = T.Compose([T.ToTensor(),T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 		#data_set = torchvision.datasets.ImageFolder(root='../data', transform=transform)
-		data_set= import_data()
+		data_set= import_data('../data/demonstrations/')
 
 		train_set_size = int(len(data_set) *0.8)
 		test_set_size = len(data_set) - train_set_size
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 	data_dir = '../models/bc/'
 	if not os.path.isdir(data_dir): 
 		os.mkdir(data_dir)
-	fname= fname+data_dir+'bc_model.h5'
+	fname= data_dir+'bc_model.h5'
 	loader_train_set,loader_test_set = Demo_Classifier().preprocessing()   
 	model = Demo_Classifier().cnn_model()
 	model_aftertrain=Demo_Classifier().train_part(model,loader_train_set, loader_test_set)
