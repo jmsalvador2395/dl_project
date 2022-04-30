@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
 
-	x, y=import_data()
+	X=import_data()
 	choice=''
 	while choice != 'q':
-		idx=np.random.randint(0, len(x))
-		data_point=x[idx]
+		idx=np.random.randint(0, len(X))
+		data_point=X[idx][0]
 		print('picked data point {}'.format(idx))
 		visualize_block(data_point)
 		choice=input('enter to continue, q to quit: ')
