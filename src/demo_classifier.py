@@ -168,7 +168,7 @@ if __name__ == '__main__':
 	data_dir = '../models/bc/'
 	if not os.path.isdir(data_dir): 
 		os.mkdir(data_dir)
-	fname= fname+data_dir+'bc_model.h5'
+	fname= data_dir+'bc_model.h5'
 	loader_train_set,loader_test_set = Demo_Classifier().preprocessing()   
 	model = Demo_Classifier().cnn_model()
 	model_aftertrain=Demo_Classifier().train_part(model,loader_train_set, loader_test_set)
